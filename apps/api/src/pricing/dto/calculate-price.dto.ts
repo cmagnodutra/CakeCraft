@@ -15,25 +15,25 @@ import {
 export class CakeLayerInputDto {
   @IsInt()
   @Min(1)
-  floorNumber: number;
+  floorNumber!: number;
 
   @IsString()
-  doughIngredientId: string;
+  doughIngredientId!: string;
 
   /** Cobertura escolhida para este andar (Chantilly, Pasta Americana etc.). */
   @IsString()
-  coverageIngredientId: string;
+  coverageIngredientId!: string;
 
   /** No maximo 2 recheios por andar (UC01/Tela 2). */
   @IsArray()
   @ArrayMinSize(0)
   @ArrayMaxSize(2)
   @IsString({ each: true })
-  fillingIngredientIds: string[];
+  fillingIngredientIds!: string[];
 
   @IsNumber()
   @IsPositive()
-  estimatedWeightKg: number;
+  estimatedWeightKg!: number;
 }
 
 export class CalculatePriceDto {
@@ -41,5 +41,5 @@ export class CalculatePriceDto {
   @ArrayMinSize(1)
   @ValidateNested({ each: true })
   @Type(() => CakeLayerInputDto)
-  floors: CakeLayerInputDto[];
+  floors!: CakeLayerInputDto[];
 }
