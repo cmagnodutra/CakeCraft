@@ -148,6 +148,29 @@ describe('Auth (e2e)', () => {
         })
         .expect(400);
     });
+
+    it('trata variacoes de maiusculas/minusculas do mesmo e-mail como a mesma conta', async () => {
+      await request(app.getHttpServer())
+        .post('/api/auth/register')
+        .send({ name: 'Mariana', email: 'CaseTeste@Example.com', password: 'senha12345' })
+        .expect(201);
+
+      // Mesmo e-mail, caixa diferente - antes da correcao, o Postgres (e
+      // aqui, o fake em memoria) teria tratado como um e-mail diferente
+      // e permitido o cadastro duplicado com 201 em vez de 409.
+      await request(app.getHttpServer())
+        .post('/api/auth/register')
+        .send({ name: 'Outra Pessoa', email: 'caseteste@example.com', password: 'outra-senha' })
+        .expect(409);
+
+      // E o login funciona com ainda outra variacao de caixa.
+      const loginResponse = await request(app.getHttpServer())
+        .post('/api/auth/login')
+        .send({ email: 'CASETESTE@EXAMPLE.COM', password: 'senha12345' })
+        .expect(200);
+
+      expect(loginResponse.body.user.email).toBe('caseteste@example.com');
+    });
   });
 
   describe('POST /api/auth/login', () => {

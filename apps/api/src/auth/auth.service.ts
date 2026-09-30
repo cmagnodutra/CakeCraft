@@ -27,14 +27,9 @@ export interface PublicUser {
 /**
  * UC03 - cadastro, login e emissao do par de tokens JWT (RF01).
  *
- * NOTA CONHECIDA (corrigida no commit seguinte, de proposito): register()
- * e login() ainda usam dto.email diretamente nas consultas ao Prisma, sem
- * normalizar maiusculas/minusculas. Como o Postgres compara e-mail com
- * diferenciacao de caixa por padrao, "Mariana@Example.com" e
- * "mariana@example.com" sao tratados hoje como contas diferentes -
- * permitindo cadastro duplicado da mesma pessoa por acidente. Ver o commit
- * fix(auth) logo apos este, que adiciona um teste que falha sem a correcao
- * e passa com ela.
+ * E-mail e sempre normalizado (normalizeEmail) antes de qualquer consulta
+ * ou persistencia - ver o comentario no metodo para o motivo (bug real
+ * encontrado em revisao, corrigido no commit fix(auth) desta branch).
  */
 @Injectable()
 export class AuthService {
@@ -46,7 +41,9 @@ export class AuthService {
 
   /** UC03, passo 2 - cadastro de um novo usuario (papel padrao: CLIENTE). */
   async register(dto: RegisterDto): Promise<{ user: PublicUser } & TokenPair> {
-    const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    const email = this.normalizeEmail(dto.email);
+
+    const existing = await this.prisma.user.findUnique({ where: { email } });
     if (existing) {
       throw new ConflictException('Ja existe uma conta com este e-mail.');
     }
@@ -57,7 +54,7 @@ export class AuthService {
     const user = await this.prisma.user.create({
       data: {
         name: dto.name,
-        email: dto.email,
+        email,
         phone: dto.phone,
         passwordHash,
       },
@@ -69,7 +66,8 @@ export class AuthService {
 
   /** UC03, passo 3 - valida credenciais e emite o par de tokens JWT. */
   async login(dto: LoginDto): Promise<{ user: PublicUser } & TokenPair> {
-    const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    const email = this.normalizeEmail(dto.email);
+    const user = await this.prisma.user.findUnique({ where: { email } });
 
     // 401 generico de proposito: nao revela se o problema foi o e-mail
     // (nao cadastrado) ou a senha (errada) - evita transformar a rota de
@@ -110,6 +108,22 @@ export class AuthService {
   /** TODO: valida o token de reset (ainda sem geracao/persistencia) e troca a senha. */
   async resetPassword(_token: string, _newPassword: string): Promise<void> {
     throw new Error('TODO: implementar validacao do token e troca de senha.');
+  }
+
+  /**
+   * BUG CORRIGIDO NESTE COMMIT: register()/login() usavam dto.email direto
+   * nas consultas ao Prisma. Postgres compara texto com diferenciacao de
+   * maiusculas/minusculas por padrao, entao "Mariana@Example.com" e
+   * "mariana@example.com" eram tratados como contas diferentes -
+   * permitindo cadastro duplicado da mesma pessoa por acidente (ou abuso
+   * deliberado pra burlar alguma regra futura ligada a e-mail unico).
+   * Normaliza para minusculas e remove espacos nas pontas antes de
+   * qualquer consulta ou persistencia - tanto em register() quanto em
+   * login(), pra garantir que os dois lados da comparacao usem sempre o
+   * mesmo formato.
+   */
+  private normalizeEmail(email: string): string {
+    return email.trim().toLowerCase();
   }
 
   private async issueTokenPair(userId: string, email: string, role: string): Promise<TokenPair> {

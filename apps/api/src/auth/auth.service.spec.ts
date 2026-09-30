@@ -100,6 +100,49 @@ describe('AuthService', () => {
       const hash = prismaMock.user.create.mock.calls[0][0].data.passwordHash as string;
       expect(hash).toMatch(/^\$2[aby]\$04\$/);
     });
+
+    it('normaliza o e-mail para minusculas antes de checar duplicidade e de persistir - evita cadastro duplicado da mesma pessoa por diferenca de caixa', async () => {
+      prismaMock.user.findUnique.mockResolvedValue(null);
+      prismaMock.user.create.mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+        Promise.resolve({ id: 'x', role: 'CLIENTE', xp: 0, level: 1, ...data }),
+      );
+
+      await service.register({
+        name: 'Mariana',
+        email: 'Mariana@Example.com',
+        password: 'senha12345',
+      });
+
+      // Postgres compara email com diferenciacao de maiusculas/minusculas
+      // por padrao - sem normalizar, "Mariana@Example.com" e
+      // "mariana@example.com" seriam tratados como contas diferentes.
+      expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
+        where: { email: 'mariana@example.com' },
+      });
+      expect(prismaMock.user.create.mock.calls[0][0].data.email).toBe('mariana@example.com');
+    });
+
+    it('normaliza o e-mail para minusculas e sem espacos antes de checar duplicidade e persistir', async () => {
+      prismaMock.user.findUnique.mockResolvedValue(null);
+      prismaMock.user.create.mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+        Promise.resolve({ id: 'x', role: 'CLIENTE', xp: 0, level: 1, ...data }),
+      );
+
+      await service.register({
+        name: 'Mariana',
+        email: '  Mariana@Example.COM  ',
+        password: 'senha12345',
+      });
+
+      // Verifica o argumento exato recebido pelo Prisma - nao so o
+      // resultado final. Sem a normalizacao, este teste falha porque o
+      // Prisma recebe o e-mail com maiusculas/espacos intactos, e
+      // "Mariana@Example.COM" !== "mariana@example.com".
+      expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
+        where: { email: 'mariana@example.com' },
+      });
+      expect(prismaMock.user.create.mock.calls[0][0].data.email).toBe('mariana@example.com');
+    });
   });
 
   describe('login', () => {
@@ -153,6 +196,43 @@ describe('AuthService', () => {
       expect(result.user).not.toHaveProperty('passwordHash');
       expect(result.accessToken).toBe('fake-token');
       expect(result.refreshToken).toBe('fake-token');
+    });
+
+    it('normaliza o e-mail para minusculas antes de buscar o usuario - mesma conta, caixa diferente, deve autenticar', async () => {
+      prismaMock.user.findUnique.mockResolvedValue({
+        id: 'user-1',
+        name: 'Mariana',
+        email: 'mariana@example.com',
+        role: 'CLIENTE',
+        xp: 0,
+        level: 1,
+        anonymizedAt: null,
+        passwordHash: await bcrypt.hash('senha12345', 4),
+      });
+
+      await service.login({ email: 'MARIANA@EXAMPLE.COM', password: 'senha12345' });
+
+      expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
+        where: { email: 'mariana@example.com' },
+      });
+    });
+
+    it('normaliza o e-mail para minusculas e sem espacos antes de buscar o usuario', async () => {
+      prismaMock.user.findUnique.mockResolvedValue({
+        id: 'user-1',
+        email: 'mariana@example.com',
+        anonymizedAt: null,
+        passwordHash: await bcrypt.hash('senha12345', 4),
+      });
+
+      await service.login({ email: '  Mariana@Example.COM  ', password: 'senha12345' });
+
+      // Mesma verificacao do argumento exato feita em register(): sem a
+      // normalizacao, o Prisma recebe "Mariana@Example.COM" com espacos,
+      // e este teste falha porque a chamada esperada nunca aconteceu.
+      expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
+        where: { email: 'mariana@example.com' },
+      });
     });
   });
 
