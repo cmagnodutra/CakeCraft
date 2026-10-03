@@ -9,6 +9,10 @@ describe('envValidationSchema', () => {
   const validEnv = {
     DATABASE_URL: 'postgresql://cakecraft:cakecraft@localhost:5432/cakecraft',
     REDIS_URL: 'redis://localhost:6379',
+    SMTP_HOST: 'smtp-relay.brevo.com',
+    SMTP_USER: 'usuario-smtp',
+    SMTP_PASSWORD: 'chave-smtp',
+    SMTP_FROM: 'CakeCraft <no-reply@cakecraft.dev>',
   };
 
   it('aplica os valores padrao quando as variaveis opcionais nao sao informadas', () => {
@@ -18,6 +22,24 @@ describe('envValidationSchema', () => {
     expect(value.NODE_ENV).toBe('development');
     expect(value.PORT).toBe(3001);
     expect(value.CORS_ORIGIN).toBe('http://localhost:3000');
+    expect(value.SMTP_PORT).toBe(587);
+  });
+
+  it('rejeita a ausencia de SMTP_HOST', () => {
+    const { SMTP_HOST, ...semSmtpHost } = validEnv;
+    void SMTP_HOST;
+
+    const { error } = envValidationSchema.validate(semSmtpHost);
+
+    expect(error).toBeDefined();
+    expect(error?.message).toContain('SMTP_HOST');
+  });
+
+  it('aceita uma porta SMTP customizada (ex.: 465 para TLS implicito)', () => {
+    const { error, value } = envValidationSchema.validate({ ...validEnv, SMTP_PORT: '465' });
+
+    expect(error).toBeUndefined();
+    expect(value.SMTP_PORT).toBe(465);
   });
 
   it('converte PORT de texto para numero', () => {

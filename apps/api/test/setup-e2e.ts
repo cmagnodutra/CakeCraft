@@ -8,3 +8,7 @@ process.env.DATABASE_URL =
   process.env.DATABASE_URL ??
   'postgresql://cakecraft:cakecraft@localhost:5432/cakecraft?schema=public';
 process.env.REDIS_URL = process.env.REDIS_URL ?? 'redis://localhost:6379';
+process.env.SMTP_HOST = process.env.SMTP_HOST ?? 'smtp-relay.brevo.com';
+process.env.SMTP_USER = process.env.SMTP_USER ?? 'usuario-smtp-de-teste';
+process.env.SMTP_PASSWORD = process.env.SMTP_PASSWORD ?? 'chave-smtp-de-teste';
+process.env.SMTP_FROM = process.env.SMTP_FROM ?? 'CakeCraft <no-reply@cakecraft.dev>';
