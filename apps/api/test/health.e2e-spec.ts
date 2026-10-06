@@ -32,9 +32,7 @@ describe('Health (e2e)', () => {
   });
 
   it('GET em rota inexistente responde 404 no formato de erro padronizado', async () => {
-    const response = await request(app.getHttpServer())
-      .get('/api/rota-inexistente')
-      .expect(404);
+    const response = await request(app.getHttpServer()).get('/api/rota-inexistente').expect(404);
 
     expect(response.body).toMatchObject({
       statusCode: 404,

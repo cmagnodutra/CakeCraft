@@ -9,9 +9,7 @@ import Joi from 'joi';
  * e quebrar so quando alguem chamar a rota afetada.
  */
 export const envValidationSchema = Joi.object({
-  NODE_ENV: Joi.string()
-    .valid('development', 'test', 'production')
-    .default('development'),
+  NODE_ENV: Joi.string().valid('development', 'test', 'production').default('development'),
 
   PORT: Joi.number().port().default(3001),
 
