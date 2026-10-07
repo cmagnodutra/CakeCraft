@@ -31,13 +31,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const request = ctx.getRequest<Request>();
 
     const isHttpException = exception instanceof HttpException;
-    const status = isHttpException
-      ? exception.getStatus()
-      : HttpStatus.INTERNAL_SERVER_ERROR;
+    const status = isHttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const message = isHttpException
-      ? this.extractMessage(exception)
-      : 'Erro interno do servidor.';
+    const message = isHttpException ? this.extractMessage(exception) : 'Erro interno do servidor.';
 
     if (!isHttpException) {
       this.logger.error(
