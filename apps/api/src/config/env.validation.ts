@@ -33,6 +33,13 @@ export const envValidationSchema = Joi.object({
     .messages({
       'string.pattern.base': 'REDIS_URL deve comecar com redis://',
     }),
+
+  /** RF01/RNF04 - autenticacao JWT (access curto + refresh longo) e Bcrypt. */
+  JWT_ACCESS_SECRET: Joi.string().min(16).required(),
+  JWT_ACCESS_EXPIRES_IN: Joi.string().default('15m'),
+  JWT_REFRESH_SECRET: Joi.string().min(16).required(),
+  JWT_REFRESH_EXPIRES_IN: Joi.string().default('7d'),
+  BCRYPT_SALT_ROUNDS: Joi.number().integer().min(10).max(14).default(12),
 })
   // Reporta todos os problemas de configuracao de uma vez, em vez de fazer
   // o desenvolvedor descobrir um por vez a cada tentativa de boot.
@@ -45,4 +52,9 @@ export interface AppEnvironment {
   CORS_ORIGIN: string;
   DATABASE_URL: string;
   REDIS_URL: string;
+  JWT_ACCESS_SECRET: string;
+  JWT_ACCESS_EXPIRES_IN: string;
+  JWT_REFRESH_SECRET: string;
+  JWT_REFRESH_EXPIRES_IN: string;
+  BCRYPT_SALT_ROUNDS: number;
 }
