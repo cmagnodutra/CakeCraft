@@ -18,7 +18,9 @@ describe('SmtpEmailSender', () => {
     SMTP_FROM: 'CakeCraft <no-reply@cakecraft.dev>',
   };
 
-  async function createSender(configOverrides: Record<string, unknown> = {}): Promise<SmtpEmailSender> {
+  async function createSender(
+    configOverrides: Record<string, unknown> = {},
+  ): Promise<SmtpEmailSender> {
     const values = { ...baseConfigValues, ...configOverrides };
     const configMock = { get: jest.fn((key: string) => values[key]) };
 

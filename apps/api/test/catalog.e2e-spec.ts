@@ -122,7 +122,10 @@ describe('Catalog (e2e)', () => {
     it('lista todos os ingredientes, inclusive inativos', async () => {
       const response = await request(app.getHttpServer()).get('/api/catalog/admin').expect(200);
 
-      expect(response.body.map((i: FakeIngredient) => i.id).sort()).toEqual(['ativo-1', 'inativo-1']);
+      expect(response.body.map((i: FakeIngredient) => i.id).sort()).toEqual([
+        'ativo-1',
+        'inativo-1',
+      ]);
     });
   });
 

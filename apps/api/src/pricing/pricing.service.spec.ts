@@ -194,7 +194,9 @@ describe('PricingService', () => {
 });
 
 /** Helper para nao repetir campos irrelevantes ao caso de teste em questao. */
-function floor(overrides: Partial<CakeLayerInputDto> & { floorNumber: number; doughIngredientId: string }): CakeLayerInputDto {
+function floor(
+  overrides: Partial<CakeLayerInputDto> & { floorNumber: number; doughIngredientId: string },
+): CakeLayerInputDto {
   return {
     coverageIngredientId: 'chantilly',
     fillingIngredientIds: [],

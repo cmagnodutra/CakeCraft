@@ -81,7 +81,9 @@ class FakeIngredientStore {
     }): Promise<FakeIngredient[]> => {
       const ids = new Set(where.id.in);
       return Promise.resolve(
-        this.ingredients.filter((ingredient) => ids.has(ingredient.id) && ingredient.active === where.active),
+        this.ingredients.filter(
+          (ingredient) => ids.has(ingredient.id) && ingredient.active === where.active,
+        ),
       );
     },
   };
@@ -191,9 +193,7 @@ describe('Pricing (e2e)', () => {
       await request(app.getHttpServer())
         .post('/api/pricing/calculate')
         .send({
-          floors: [
-            { ...nonAeratedFloor(), fillingIngredientIds: ['a', 'b', 'c'] },
-          ],
+          floors: [{ ...nonAeratedFloor(), fillingIngredientIds: ['a', 'b', 'c'] }],
         })
         .expect(400);
     });

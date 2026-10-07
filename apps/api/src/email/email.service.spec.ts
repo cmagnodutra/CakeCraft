@@ -51,7 +51,10 @@ describe('EmailService', () => {
     });
 
     it('escapa o token na URL (encodeURIComponent) para nao quebrar a querystring', async () => {
-      await service.sendPasswordResetEmail('mariana@example.com', 'token com espaco&caracteres=especiais');
+      await service.sendPasswordResetEmail(
+        'mariana@example.com',
+        'token com espaco&caracteres=especiais',
+      );
 
       const chamada = senderMock.send.mock.calls[0][0];
       expect(chamada.html).toContain(encodeURIComponent('token com espaco&caracteres=especiais'));

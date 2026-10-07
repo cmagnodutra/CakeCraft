@@ -94,7 +94,9 @@ export class AuthService {
    * este metodo; o cookie de refresh apenas expira e exige login de novo.
    */
   async refresh(_refreshToken: string): Promise<TokenPair> {
-    throw new Error('TODO: implementar rotacao de refresh token (ver model RefreshToken no schema.prisma).');
+    throw new Error(
+      'TODO: implementar rotacao de refresh token (ver model RefreshToken no schema.prisma).',
+    );
   }
 
   /**

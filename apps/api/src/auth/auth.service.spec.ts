@@ -92,7 +92,11 @@ describe('AuthService', () => {
         Promise.resolve({ id: 'x', role: 'CLIENTE', xp: 0, level: 1, ...data }),
       );
 
-      await service.register({ name: 'Mariana', email: 'mariana@example.com', password: 'senha12345' });
+      await service.register({
+        name: 'Mariana',
+        email: 'mariana@example.com',
+        password: 'senha12345',
+      });
 
       // O custo usado fica embutido no proprio texto do hash bcrypt
       // (formato $2b$<custo>$...), entao da pra confirmar que o valor

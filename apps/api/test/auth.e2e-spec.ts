@@ -32,7 +32,11 @@ class FakePrismaUserStore {
   private nextId = 1;
 
   user = {
-    findUnique: ({ where }: { where: { email?: string; id?: string } }): Promise<FakeUser | null> => {
+    findUnique: ({
+      where,
+    }: {
+      where: { email?: string; id?: string };
+    }): Promise<FakeUser | null> => {
       const found = where.email
         ? this.users.find((u) => u.email === where.email)
         : this.users.find((u) => u.id === where.id);
@@ -107,7 +111,9 @@ describe('Auth (e2e)', () => {
         .expect(201);
 
       const cookies = response.headers['set-cookie'] as unknown as string[];
-      expect(cookies.some((c) => c.startsWith('access_token=') && c.includes('HttpOnly'))).toBe(true);
+      expect(cookies.some((c) => c.startsWith('access_token=') && c.includes('HttpOnly'))).toBe(
+        true,
+      );
       expect(
         cookies.some(
           (c) =>

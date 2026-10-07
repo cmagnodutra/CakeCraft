@@ -63,7 +63,9 @@ export class PricingService {
 
     const layers = dto.floors.map((floor) => this.computeLayerSubtotal(floor, priceByIngredientId));
 
-    const totalPrice = round2(layers.reduce((sum, layer) => sum + layer.subtotal, 0) + ASSEMBLY_BASE_FEE);
+    const totalPrice = round2(
+      layers.reduce((sum, layer) => sum + layer.subtotal, 0) + ASSEMBLY_BASE_FEE,
+    );
 
     return { layers, assemblyBaseFee: ASSEMBLY_BASE_FEE, totalPrice };
   }
@@ -82,7 +84,9 @@ export class PricingService {
       return;
     }
 
-    const usesAeratedDough = floors.some((floor) => aeratedIngredientIds.has(floor.doughIngredientId));
+    const usesAeratedDough = floors.some((floor) =>
+      aeratedIngredientIds.has(floor.doughIngredientId),
+    );
     if (usesAeratedDough) {
       throw new UnprocessableEntityException(
         'Massas aeradas nao sao permitidas em bolos com mais de 2 andares (risco estrutural de desabamento).',
