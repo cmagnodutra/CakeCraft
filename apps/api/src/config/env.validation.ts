@@ -40,6 +40,17 @@ export const envValidationSchema = Joi.object({
   JWT_REFRESH_SECRET: Joi.string().min(16).required(),
   JWT_REFRESH_EXPIRES_IN: Joi.string().default('7d'),
   BCRYPT_SALT_ROUNDS: Joi.number().integer().min(10).max(14).default(12),
+  /**
+   * Relay SMTP para e-mails transacionais (recuperacao de senha etc.).
+   * Provedor padrao: Brevo (smtp-relay.brevo.com:587) - 300 e-mails/dia
+   * gratis, sem cartao de credito. Qualquer relay SMTP padrao funciona,
+   * e so trocar estas variaveis.
+   */
+  SMTP_HOST: Joi.string().required(),
+  SMTP_PORT: Joi.number().port().default(587),
+  SMTP_USER: Joi.string().required(),
+  SMTP_PASSWORD: Joi.string().required(),
+  SMTP_FROM: Joi.string().required(),
 })
   // Reporta todos os problemas de configuracao de uma vez, em vez de fazer
   // o desenvolvedor descobrir um por vez a cada tentativa de boot.
@@ -57,4 +68,9 @@ export interface AppEnvironment {
   JWT_REFRESH_SECRET: string;
   JWT_REFRESH_EXPIRES_IN: string;
   BCRYPT_SALT_ROUNDS: number;
+  SMTP_HOST: string;
+  SMTP_PORT: number;
+  SMTP_USER: string;
+  SMTP_PASSWORD: string;
+  SMTP_FROM: string;
 }

@@ -11,6 +11,10 @@ describe('envValidationSchema', () => {
     REDIS_URL: 'redis://localhost:6379',
     JWT_ACCESS_SECRET: 'segredo-de-teste-com-mais-de-16-chars',
     JWT_REFRESH_SECRET: 'outro-segredo-de-teste-tambem-longo',
+    SMTP_HOST: 'smtp-relay.brevo.com',
+    SMTP_USER: 'usuario-smtp',
+    SMTP_PASSWORD: 'chave-smtp',
+    SMTP_FROM: 'CakeCraft <no-reply@cakecraft.dev>',
   };
 
   it('aplica os valores padrao quando as variaveis opcionais nao sao informadas', () => {
@@ -23,6 +27,24 @@ describe('envValidationSchema', () => {
     expect(value.JWT_ACCESS_EXPIRES_IN).toBe('15m');
     expect(value.JWT_REFRESH_EXPIRES_IN).toBe('7d');
     expect(value.BCRYPT_SALT_ROUNDS).toBe(12);
+    expect(value.SMTP_PORT).toBe(587);
+  });
+
+  it('rejeita a ausencia de SMTP_HOST', () => {
+    const { SMTP_HOST, ...semSmtpHost } = validEnv;
+    void SMTP_HOST;
+
+    const { error } = envValidationSchema.validate(semSmtpHost);
+
+    expect(error).toBeDefined();
+    expect(error?.message).toContain('SMTP_HOST');
+  });
+
+  it('aceita uma porta SMTP customizada (ex.: 465 para TLS implicito)', () => {
+    const { error, value } = envValidationSchema.validate({ ...validEnv, SMTP_PORT: '465' });
+
+    expect(error).toBeUndefined();
+    expect(value.SMTP_PORT).toBe(465);
   });
 
   it('converte PORT de texto para numero', () => {
