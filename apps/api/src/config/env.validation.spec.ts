@@ -107,6 +107,7 @@ describe('envValidationSchema', () => {
 
   it('rejeita a ausencia de JWT_ACCESS_SECRET', () => {
     const { JWT_ACCESS_SECRET, ...envSemAccessSecret } = validEnv;
+    void JWT_ACCESS_SECRET;
     const { error } = envValidationSchema.validate(envSemAccessSecret);
 
     expect(error).toBeDefined();

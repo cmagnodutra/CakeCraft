@@ -26,7 +26,14 @@ describe('AuthController', () => {
     level: 1,
   };
 
-  const makeResMock = (): Response => ({ cookie: jest.fn() }) as unknown as Response;
+  /**
+   * Devolve o objeto Response falso e, separado, o jest.fn() de cookie: assim
+   * as assercoes usam o mock direto, sem acessar o metodo pelo Response.
+   */
+  const makeResMock = () => {
+    const cookie = jest.fn();
+    return { res: { cookie } as unknown as Response, cookie };
+  };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -53,7 +60,7 @@ describe('AuthController', () => {
 
       const result = await controller.register(
         { name: 'Mariana', email: 'mariana@example.com', password: 'senha12345' },
-        makeResMock(),
+        makeResMock().res,
       );
 
       expect(result).toEqual({ user: publicUser });
@@ -68,19 +75,19 @@ describe('AuthController', () => {
         refreshToken: 'refresh-fake',
       });
       configMock.get.mockReturnValue('development');
-      const res = makeResMock();
+      const { res, cookie } = makeResMock();
 
       await controller.register(
         { name: 'Mariana', email: 'mariana@example.com', password: 'senha12345' },
         res,
       );
 
-      expect(res.cookie).toHaveBeenCalledWith(
+      expect(cookie).toHaveBeenCalledWith(
         'access_token',
         'access-fake',
         expect.objectContaining({ httpOnly: true, sameSite: 'lax', secure: false }),
       );
-      expect(res.cookie).toHaveBeenCalledWith(
+      expect(cookie).toHaveBeenCalledWith(
         'refresh_token',
         'refresh-fake',
         expect.objectContaining({
@@ -99,14 +106,14 @@ describe('AuthController', () => {
         refreshToken: 'refresh-fake',
       });
       configMock.get.mockReturnValue('production');
-      const res = makeResMock();
+      const { res, cookie } = makeResMock();
 
       await controller.register(
         { name: 'Mariana', email: 'mariana@example.com', password: 'senha12345' },
         res,
       );
 
-      expect(res.cookie).toHaveBeenCalledWith(
+      expect(cookie).toHaveBeenCalledWith(
         'access_token',
         'access-fake',
         expect.objectContaining({ secure: true }),
@@ -122,7 +129,7 @@ describe('AuthController', () => {
         refreshToken: 'refresh-fake',
       });
       configMock.get.mockReturnValue('development');
-      const res = makeResMock();
+      const { res, cookie } = makeResMock();
 
       const result = await controller.login(
         { email: 'mariana@example.com', password: 'senha12345' },
@@ -130,7 +137,7 @@ describe('AuthController', () => {
       );
 
       expect(result).toEqual({ user: publicUser });
-      expect(res.cookie).toHaveBeenCalledTimes(2);
+      expect(cookie).toHaveBeenCalledTimes(2);
     });
   });
 });

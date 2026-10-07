@@ -93,9 +93,11 @@ export class AuthService {
    * RefreshToken e revogando o antigo. Hoje nao ha rota nem chamador para
    * este metodo; o cookie de refresh apenas expira e exige login de novo.
    */
-  async refresh(_refreshToken: string): Promise<TokenPair> {
-    throw new Error(
-      'TODO: implementar rotacao de refresh token (ver model RefreshToken no schema.prisma).',
+  refresh(_refreshToken: string): Promise<TokenPair> {
+    return Promise.reject(
+      new Error(
+        'TODO: implementar rotacao de refresh token (ver model RefreshToken no schema.prisma).',
+      ),
     );
   }
 
@@ -103,13 +105,13 @@ export class AuthService {
    * TODO: depende de feature/email (ainda nao existe nesta branch) para
    * disparar o e-mail de recuperacao de senha.
    */
-  async forgotPassword(_email: string): Promise<void> {
-    throw new Error('TODO: implementar apos feature/email existir.');
+  forgotPassword(_email: string): Promise<void> {
+    return Promise.reject(new Error('TODO: implementar apos feature/email existir.'));
   }
 
   /** TODO: valida o token de reset (ainda sem geracao/persistencia) e troca a senha. */
-  async resetPassword(_token: string, _newPassword: string): Promise<void> {
-    throw new Error('TODO: implementar validacao do token e troca de senha.');
+  resetPassword(_token: string, _newPassword: string): Promise<void> {
+    return Promise.reject(new Error('TODO: implementar validacao do token e troca de senha.'));
   }
 
   /**
