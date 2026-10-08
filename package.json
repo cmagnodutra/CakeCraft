@@ -11,7 +11,8 @@
     "dev:api": "npm run dev -w @cakecraft/api",
     "build:api": "npm run build -w @cakecraft/api",
     "test:api": "npm run test -w @cakecraft/api",
-    "test:e2e:api": "npm run test:e2e -w @cakecraft/api"
+    "test:e2e:api": "npm run test:e2e -w @cakecraft/api",
+    "audit:prod": "npm audit --omit=dev"
   },
   "engines": {
     "node": ">=20.0.0"
