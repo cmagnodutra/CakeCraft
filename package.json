@@ -12,10 +12,14 @@
     "build:api": "npm run build -w @cakecraft/api",
     "test:api": "npm run test -w @cakecraft/api",
     "test:e2e:api": "npm run test:e2e -w @cakecraft/api",
+    "dev:web": "npm run dev -w @cakecraft/web",
+    "build:web": "npm run build -w @cakecraft/web",
+    "test:web": "npm run test -w @cakecraft/web",
+    "lint:web": "npm run lint -w @cakecraft/web",
     "audit:prod": "npm audit --omit=dev"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=20.9.0"
   },
   "overrides": {
     "webpack": "^5.105.4",
