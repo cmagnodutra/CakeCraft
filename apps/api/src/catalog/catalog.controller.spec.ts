@@ -50,7 +50,7 @@ describe('CatalogController', () => {
   it('POST / delega para create() com o DTO recebido', async () => {
     const dto: CreateIngredientDto = {
       name: 'Brigadeiro',
-      type: 'RECHEIO' as CreateIngredientDto['type'],
+      type: 'RECHEIO',
       pricePerKg: 25,
     };
     const criado = { id: 'novo', ...dto };
