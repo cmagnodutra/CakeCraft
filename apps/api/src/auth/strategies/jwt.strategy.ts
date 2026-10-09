@@ -14,9 +14,15 @@ export interface JwtPayload {
  * Extrai o access token do cookie httpOnly 'access_token', em vez do
  * header 'Authorization: Bearer ...' (decisao confirmada: cookies
  * httpOnly protegem contra XSS, ao contrario de localStorage).
+ *
+ * req.cookies e tipado como any pelo cookie-parser, e o valor pode nao ser
+ * string (o cookie-parser converte cookies no formato 'j:{...}' em objeto).
+ * So aceitamos string; qualquer outra coisa e tratada como token ausente.
  */
-function extractFromCookie(req: Request): string | null {
-  return req?.cookies?.access_token ?? null;
+export function extractFromCookie(req: Request): string | null {
+  const cookies = req?.cookies as Record<string, unknown> | undefined;
+  const token = cookies?.access_token;
+  return typeof token === 'string' ? token : null;
 }
 
 /**

@@ -3,6 +3,7 @@ import { Reflector } from '@nestjs/core';
 
 import { ROLES_KEY } from '../decorators/roles.decorator';
 import { Role } from '../enums/role.enum';
+import { AuthenticatedRequest } from '../types/authenticated-request';
 
 /**
  * Garante que rotas administrativas sejam inacessiveis ao papel CLIENTE
@@ -24,7 +25,17 @@ export class RolesGuard implements CanActivate {
       return true;
     }
 
-    const { user } = context.switchToHttp().getRequest();
-    return requiredRoles.includes(user?.role);
+    const { user } = context.switchToHttp().getRequest<AuthenticatedRequest>();
+
+    // Falha fechada: rota restrita sem usuario autenticado nunca passa.
+    if (!user) {
+      return false;
+    }
+
+    // Todo Role e uma string, entao Role[] cabe em readonly string[] sem cast.
+    // Isso permite comparar com user.role (string vinda do JWT) sem mentir
+    // sobre o tipo dele nem acionar no-unsafe-enum-comparison.
+    const allowedRoles: readonly string[] = requiredRoles;
+    return allowedRoles.includes(user.role);
   }
 }
