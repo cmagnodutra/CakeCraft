@@ -34,3 +34,6 @@ Thumbs.db
 # Diversos
 *.tsbuildinfo
 .eslintcache
+
+# Gerado pelo Next a cada build/dev
+next-env.d.ts
