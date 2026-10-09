@@ -20,7 +20,7 @@ em tempo real e um quadro Kanban de produção para a cozinha.
 cakecraft/
 ├── apps/
 │   ├── api/   -> Backend: API REST (NestJS + TypeScript)
-│   └── web/   -> Frontend: Next.js (entra em uma rodada posterior)
+│   └── web/   -> Frontend: Next.js 16 + React 19 + Tailwind (em construção)
 └── package.json  -> Raiz do workspace (npm workspaces)
 ```
 
@@ -30,11 +30,24 @@ resolvidos por npm workspaces.
 
 ## Estado atual
 
-Repositório em construcao incremental. O backend está sendo desenvolvido
-primeiro; o frontend entra depois que os modulos de API estiverem
-implementados e testados.
+Repositório em construção incremental. O backend (auth, catálogo,
+precificação e e-mail) está implementado e testado; o frontend começou pelo
+esqueleto do workspace e segue com design system, autenticação, Cake Builder
+e administração do catálogo. Decisões do frontend: `docs/DECISOES-FRONTEND.md`.
 
 ## Pré-requisitos
 
-- Node.js 20 ou superior
+- Node.js 20.9 ou superior (exigência do Next.js 16)
 - Docker e Docker Compose (para Postgres e Redis em desenvolvimento)
+
+## Comandos principais (a partir da raiz)
+
+| Comando | O que faz |
+| --- | --- |
+| `npm run dev:api` / `npm run dev:web` | Sobe a API (porta 3001) / o frontend (porta 3000) |
+| `npm run test:api` / `npm run test:web` | Testes unitários de cada app |
+| `npm run test:e2e:api` | Testes e2e da API (exigem o Docker de pé) |
+| `npm run lint:web` | ESLint do frontend |
+| `npm run audit:prod` | Vulnerabilidades em dependências de produção (deve ser 0) |
+
+O frontend lê a URL da API de `NEXT_PUBLIC_API_URL` (veja `apps/web/.env.example`).
