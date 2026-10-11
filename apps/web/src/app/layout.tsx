@@ -1,17 +1,44 @@
 import type { Metadata } from 'next';
+import localFont from 'next/font/local';
 import type { ReactNode } from 'react';
+
+import { SiteHeader } from '@/components/layout/site-header';
+import { messages } from '@/content/messages';
 
 import './globals.css';
 
+// Fontes autohospedadas (licenca OFL, arquivos em ./fonts): nenhuma
+// requisicao ao Google Fonts, melhor para a LGPD e para build offline.
+const serif = localFont({
+  src: [
+    { path: './fonts/instrument-serif-latin-400-normal.woff2', weight: '400', style: 'normal' },
+    { path: './fonts/instrument-serif-latin-400-italic.woff2', weight: '400', style: 'italic' },
+  ],
+  variable: '--font-instrument-serif',
+  display: 'swap',
+  fallback: ['Iowan Old Style', 'Georgia', 'serif'],
+});
+
+const sans = localFont({
+  src: './fonts/hanken-grotesk-latin-wght-normal.woff2',
+  variable: '--font-hanken-grotesk',
+  weight: '100 900',
+  display: 'swap',
+  fallback: ['ui-sans-serif', 'system-ui', 'sans-serif'],
+});
+
 export const metadata: Metadata = {
-  title: 'CakeCraft',
-  description: 'Monte seu bolo, veja o preco na hora e acompanhe a producao.',
+  title: messages.brand.name,
+  description: messages.brand.tagline,
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="pt-BR">
-      <body>{children}</body>
+    <html lang="pt-BR" className={`${serif.variable} ${sans.variable}`}>
+      <body>
+        <SiteHeader />
+        <main id="conteudo">{children}</main>
+      </body>
     </html>
   );
 }

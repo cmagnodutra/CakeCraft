@@ -6,6 +6,6 @@ describe('HomePage', () => {
   it('mostra a marca CakeCraft como titulo principal', () => {
     render(<HomePage />);
 
-    expect(screen.getByRole('heading', { level: 1, name: 'CakeCraft' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Cakecraft' })).toBeInTheDocument();
   });
 });
