@@ -48,6 +48,36 @@ erro (nunca cai em localhost em silencio), so aceita http/https e remove
 barras finais. Sera a base do cliente de API (`credentials: 'include'`,
 conforme o contrato de autenticacao por cookie httpOnly).
 
+## 6. Design system "High-Key" quente (implementado)
+
+**Fontes.** Instrument Serif (normal e italico) nos titulos e Hanken
+Grotesk (variavel) no texto. Autohospedadas em `src/app/fonts`, licenca
+OFL-1.1 junto dos arquivos, carregadas por `next/font/local`. Nenhuma
+requisicao ao Google Fonts (LGPD, build offline). Peso total: cerca de 78 KB.
+Os glifos do pt-BR foram conferidos um a um com fonttools.
+
+**Cores como contrato testado (RNF03).** Os tokens vivem em
+`src/app/globals.css` e o teste `design-tokens.spec.ts` le esse arquivo e
+valida cada par texto/fundo (>= 4.5:1) e cada borda ou foco (>= 3:1) pela
+formula oficial da WCAG 2.1 (`lib/contrast.ts`). Trocar uma cor no CSS sem
+respeitar o contraste faz um teste falhar. Menores valores atuais: texto
+5.49:1, borda de campo 3.67:1.
+
+**Componentes.** Button, Field e Alert em `src/components/ui`, com testes de
+comportamento e de acessibilidade (rotulo associado, aria-describedby,
+role alert/status, estado de carregamento anunciado). Tela de referencia:
+`/design-system` (noindex).
+
+**Textos.** Centralizados em `src/content/messages.ts`; comentarios de
+codigo em ASCII, textos de interface com acento.
+
+**Marca.** "Cakecraft", como definido pelo autor; o RFC usa "CakeCraft" e
+os identificadores de codigo (`@cakecraft/*`) seguem em minusculas.
+
+**Navegacao.** O cabecalho so tem a marca. Links como "Montar bolo" e
+"Entrar" entram junto das rotas que abrem: um botao que nao funciona e
+motivo de reprovacao direta na regua da disciplina.
+
 ## Decisoes de design ja tomadas (valem para as proximas branches)
 
 - **Tipografia:** serifa elegante nos titulos + sans limpa no corpo,
