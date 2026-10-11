@@ -1,1 +1,87 @@
 @import 'tailwindcss';
+
+/*
+ * Design system "High-Key" (RFC, Secao 4), em versao quente: papel off-white
+ * e areia no lugar de cinza frio, CTAs em preto solido com texto branco.
+ * O bolo (a foto/render) e sempre o protagonista; a interface e o "chrome".
+ *
+ * Estas cores sao a fonte da verdade do contraste: o teste
+ * src/app/design-tokens.spec.ts le este arquivo e valida cada par
+ * texto/fundo contra a WCAG 2.1 (RNF03). Use sempre o formato #rrggbb.
+ */
+@theme {
+  /* Superficies */
+  --color-paper: #faf7f2;
+  --color-surface: #ffffff;
+  --color-sand-100: #f3ede3;
+  --color-sand-200: #e8dfcf;
+
+  /* Linhas: a fina separa areas; a forte delimita campos (3:1 contra o fundo) */
+  --color-line: #e5dccb;
+  --color-line-strong: #8c7f69;
+
+  /* Texto e CTA */
+  --color-ink: #1b1814;
+  --color-ink-muted: #5b5247;
+  --color-on-ink: #ffffff;
+
+  /* Destaque da marca (texto seguro, nao so decorativo) */
+  --color-accent: #8a5a2b;
+
+  /* Feedback */
+  --color-danger: #9a2b1e;
+  --color-danger-soft: #fbede9;
+  --color-danger-line: #e4b4aa;
+  --color-success: #34512d;
+  --color-success-soft: #edf3e8;
+  --color-success-line: #b8ccae;
+
+  --radius-control: 0.5rem;
+}
+
+/*
+ * As familias vem do next/font (autohospedadas em src/app/fonts), que
+ * define as variaveis abaixo no <html>. 'inline' faz o Tailwind ler a
+ * variavel no uso, e nao no momento da declaracao.
+ */
+@theme inline {
+  --font-serif: var(--font-instrument-serif), 'Iowan Old Style', Georgia, 'Times New Roman', serif;
+  --font-sans:
+    var(--font-hanken-grotesk), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    sans-serif;
+}
+
+@layer base {
+  html {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+  }
+
+  body {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Foco de teclado visivel e consistente (WCAG 2.4.7) */
+  :focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background-color: var(--color-sand-200);
+  }
+}
+
+/* Respeita quem pediu menos movimento no sistema operacional (WCAG 2.3.3) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
