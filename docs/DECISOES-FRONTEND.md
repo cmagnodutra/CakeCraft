@@ -50,10 +50,10 @@ conforme o contrato de autenticacao por cookie httpOnly).
 
 ## 6. Design system "High-Key" quente (implementado)
 
-**Fontes.** Instrument Serif (normal e italico) nos titulos e Hanken
+**Fontes.** Libre Caslon Text (normal e italico) nos titulos e Hanken
 Grotesk (variavel) no texto. Autohospedadas em `src/app/fonts`, licenca
 OFL-1.1 junto dos arquivos, carregadas por `next/font/local`. Nenhuma
-requisicao ao Google Fonts (LGPD, build offline). Peso total: cerca de 78 KB.
+requisicao ao Google Fonts (LGPD, build offline). Peso total: cerca de 88 KB.
 Os glifos do pt-BR foram conferidos um a um com fonttools.
 
 **Cores como contrato testado (RNF03).** Os tokens vivem em

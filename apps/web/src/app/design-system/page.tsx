@@ -42,8 +42,8 @@ export default function DesignSystemPage() {
   return (
     <div className="mx-auto w-full max-w-6xl px-5 py-14 sm:px-8">
       <p className="text-sm font-bold tracking-widest text-accent uppercase">Design system</p>
-      <h1 className="mt-3 max-w-3xl font-serif text-5xl leading-[1.05] tracking-tight sm:text-7xl">
-        High-Key, <span className="italic">em tons quentes</span>
+      <h1 className="mt-3 max-w-4xl font-serif text-[2.5rem] leading-[1.08] tracking-[-0.015em] sm:text-6xl">
+        High-Key, <span className="whitespace-nowrap italic">em tons quentes</span>
       </h1>
       <p className="mt-6 max-w-2xl text-lg text-ink-muted">
         Papel off-white e areia, botões em preto sólido e uma serifa de ateliê. A interface fica em
@@ -68,7 +68,7 @@ export default function DesignSystemPage() {
 
         <Section
           title="Tipografia"
-          note="Instrument Serif nos títulos, Hanken Grotesk no texto. As duas são autohospedadas."
+          note="Libre Caslon Text nos títulos, Hanken Grotesk no texto. As duas são autohospedadas."
         >
           <div className="space-y-6">
             <p className="font-serif text-6xl leading-none tracking-tight">Monte o seu bolo</p>
