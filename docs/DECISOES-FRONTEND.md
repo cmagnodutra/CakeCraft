@@ -71,8 +71,11 @@ role alert/status, estado de carregamento anunciado). Tela de referencia:
 **Textos.** Centralizados em `src/content/messages.ts`; comentarios de
 codigo em ASCII, textos de interface com acento.
 
-**Marca.** "Cakecraft", como definido pelo autor; o RFC usa "CakeCraft" e
-os identificadores de codigo (`@cakecraft/*`) seguem em minusculas.
+**Marca.** "CakeCraft", com C maiusculo, como no RFC e como confirmado pelo
+autor. Na interface, "Cake" em serifa reta e "Craft" em italico na cor de
+acento. O nome vive em `messages.brand.name` e um teste garante que a marca
+visual e o texto nunca divergem. Identificadores de codigo (`@cakecraft/*`) e
+o endereco do repositorio no GitHub seguem em minusculas, por convencao.
 
 **Navegacao.** O cabecalho so tem a marca. Links como "Montar bolo" e
 "Entrar" entram junto das rotas que abrem: um botao que nao funciona e

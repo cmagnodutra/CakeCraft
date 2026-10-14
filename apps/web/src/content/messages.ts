@@ -8,7 +8,7 @@
  */
 export const messages = {
   brand: {
-    name: 'Cakecraft',
+    name: 'CakeCraft',
     tagline: 'Monte seu bolo, veja o preço na hora e acompanhe a produção.',
   },
   common: {
