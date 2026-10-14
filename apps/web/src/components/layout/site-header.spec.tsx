@@ -6,7 +6,7 @@ describe('SiteHeader', () => {
   it('a marca e um link para a pagina inicial', () => {
     render(<SiteHeader />);
 
-    expect(screen.getByRole('link', { name: 'Cakecraft' })).toHaveAttribute('href', '/');
+    expect(screen.getByRole('link', { name: 'CakeCraft' })).toHaveAttribute('href', '/');
   });
 
   it('tem um link para pular direto ao conteudo (teclado e leitor de tela, WCAG 2.4.1)', () => {

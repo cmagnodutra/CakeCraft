@@ -45,7 +45,7 @@
  * variavel no uso, e nao no momento da declaracao.
  */
 @theme inline {
-  --font-serif: var(--font-instrument-serif), 'Iowan Old Style', Georgia, 'Times New Roman', serif;
+  --font-serif: var(--font-libre-caslon), 'Iowan Old Style', Georgia, 'Times New Roman', serif;
   --font-sans:
     var(--font-hanken-grotesk), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
     sans-serif;
@@ -61,6 +61,13 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+  }
+
+  /* Equilibra as linhas dos titulos: evita palavra orfa na ultima linha */
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
   }
 
   /* Foco de teclado visivel e consistente (WCAG 2.4.7) */

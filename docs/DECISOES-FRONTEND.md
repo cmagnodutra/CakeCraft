@@ -50,10 +50,10 @@ conforme o contrato de autenticacao por cookie httpOnly).
 
 ## 6. Design system "High-Key" quente (implementado)
 
-**Fontes.** Instrument Serif (normal e italico) nos titulos e Hanken
+**Fontes.** Libre Caslon Text (normal e italico) nos titulos e Hanken
 Grotesk (variavel) no texto. Autohospedadas em `src/app/fonts`, licenca
 OFL-1.1 junto dos arquivos, carregadas por `next/font/local`. Nenhuma
-requisicao ao Google Fonts (LGPD, build offline). Peso total: cerca de 78 KB.
+requisicao ao Google Fonts (LGPD, build offline). Peso total: cerca de 88 KB.
 Os glifos do pt-BR foram conferidos um a um com fonttools.
 
 **Cores como contrato testado (RNF03).** Os tokens vivem em
@@ -71,8 +71,11 @@ role alert/status, estado de carregamento anunciado). Tela de referencia:
 **Textos.** Centralizados em `src/content/messages.ts`; comentarios de
 codigo em ASCII, textos de interface com acento.
 
-**Marca.** "Cakecraft", como definido pelo autor; o RFC usa "CakeCraft" e
-os identificadores de codigo (`@cakecraft/*`) seguem em minusculas.
+**Marca.** "CakeCraft", com C maiusculo, como no RFC e como confirmado pelo
+autor. Na interface, "Cake" em serifa reta e "Craft" em italico na cor de
+acento. O nome vive em `messages.brand.name` e um teste garante que a marca
+visual e o texto nunca divergem. Identificadores de codigo (`@cakecraft/*`) e
+o endereco do repositorio no GitHub seguem em minusculas, por convencao.
 
 **Navegacao.** O cabecalho so tem a marca. Links como "Montar bolo" e
 "Entrar" entram junto das rotas que abrem: um botao que nao funciona e
