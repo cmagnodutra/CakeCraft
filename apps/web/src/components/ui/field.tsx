@@ -21,7 +21,11 @@ export function Field({ label, hint, error, className, ...inputProps }: FieldPro
   const id = useId();
   const hintId = `${id}-hint`;
   const errorId = `${id}-error`;
-  const describedBy = [hint && hintId, error && errorId].filter(Boolean).join(' ') || undefined;
+  // O erro substitui a dica: ele ja orienta o usuario, e mostrar os dois
+  // repetiria o mesmo texto (ex.: "Minimo de 8 caracteres" + "A senha
+  // precisa ter pelo menos 8 caracteres").
+  const showHint = Boolean(hint) && !error;
+  const describedBy = [showHint && hintId, error && errorId].filter(Boolean).join(' ') || undefined;
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -41,7 +45,7 @@ export function Field({ label, hint, error, className, ...inputProps }: FieldPro
         )}
         {...inputProps}
       />
-      {hint && (
+      {showHint && (
         <p id={hintId} className="text-sm text-ink-muted">
           {hint}
         </p>

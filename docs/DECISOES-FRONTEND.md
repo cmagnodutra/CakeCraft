@@ -81,6 +81,63 @@ o endereco do repositorio no GitHub seguem em minusculas, por convencao.
 "Entrar" entram junto das rotas que abrem: um botao que nao funciona e
 motivo de reprovacao direta na regua da disciplina.
 
+## 7. Cliente de API e tela de cadastro
+
+**Um unico ponto de rede.** `lib/api/client.ts` (`apiRequest`) e o unico
+codigo do frontend que chama a API. Envia `credentials: 'include'` sempre
+(o navegador so manda os cookies httpOnly entre origens, `localhost:3000` ->
+`3001`, com essa opcao) e nunca envia `Authorization`: ha um teste que falha
+se alguem reintroduzir o header, porque a decisao do projeto e que a sessao
+vive so em cookie httpOnly (protege contra XSS).
+
+**Dois tipos de erro, de proposito.** `ApiError` (o servidor respondeu com
+erro) e `NetworkError` (nao houve resposta). A tela reage diferente:
+"dados invalidos" x "verifique sua conexao". `extractMessages` le o formato
+do contrato (string ou array) e nunca lanca, mesmo com corpo estranho
+(HTML de proxy, por exemplo).
+
+**A mensagem da API nunca chega ao usuario.** A API responde em ingles e sem
+acento ("Ja existe uma conta..."). `describeRegisterError` traduz cada
+situacao para um texto de `messages.ts`: 409 aparece no campo e-mail, rede,
+5xx e demais viram aviso geral.
+
+**Validacao espelha o backend.** `validateRegister` segue o `RegisterDto`
+(nome >= 2, senha >= 8, e-mail valido, telefone livre) e acrescenta o que e
+so de interface: telefone opcional com DDD. O corpo enviado tem so os 4
+campos aceitos, porque a API usa `forbidNonWhitelisted` e recusa a requisicao
+inteira se vier qualquer outro. A senha nunca e aparada.
+
+**Formulario.** Foco no primeiro campo invalido; erro apagado so no campo
+corrigido; guarda por `ref` contra envio duplo (dois submits antes do
+re-render passam pelo botao ainda habilitado); no sucesso o foco vai para o
+novo titulo, porque o formulario some e o foco se perderia no body.
+
+**Como foi verificado no navegador.** Nao ha Postgres no ambiente de
+desenvolvimento do assistente (o engine do Prisma nao baixa). A verificacao
+sobe o codigo REAL da API (controller, DTOs, ValidationPipe, bcrypt 12, JWT,
+cookies, CORS, filtro de erros) trocando so o acesso ao banco por memoria, e
+um Chromium percorre o fluxo: corpo e cabecalhos da requisicao, cookies
+(httpOnly, SameSite, path), 409 com e-mail em outra caixa, queda de rede com
+a API derrubada e nova tentativa com ela de volta. O limite: isso nao exercita
+o Postgres; quem cobre o banco sao os testes e2e da API.
+
+## Pendencias de backend encontradas (nao sao do frontend)
+
+1. **Sem `GET /api/auth/me` e sem `POST /api/auth/logout`.** Sem `me`, ao
+   recarregar a pagina o frontend nao sabe se ha alguem logado nem protege
+   rotas de admin; sem `logout`, os cookies httpOnly nao podem ser limpos pelo
+   JavaScript. Aprovadas pelo autor, vao na branch `feature/auth-session`.
+2. **Senhas longas e bcrypt.** O bcrypt so usa os primeiros 72 bytes: duas
+   senhas com o mesmo comeco de 72 caracteres sao aceitas como iguais
+   (verificado em teste manual) e o `RegisterDto`/`LoginDto` nao tem limite
+   maximo. Sugestao: rejeitar com 400 senha acima de 72 bytes (bytes, nao
+   caracteres: acentos ocupam mais de um byte).
+3. **Sem rate limiting (RNF05 do RFC).** Nao ha limite de tentativas em
+   nenhuma rota, entao cadastro e login estao expostos a forca bruta. O
+   frontend ja trata o 429 com mensagem propria para quando existir.
+4. **Sem rota de refresh** (`AuthService.refresh` e TODO). O access token
+   expira em 15 minutos e hoje nao ha como renova-lo.
+
 ## Decisoes de design ja tomadas (valem para as proximas branches)
 
 - **Tipografia:** serifa elegante nos titulos + sans limpa no corpo,

@@ -28,7 +28,9 @@ const sans = localFont({
 });
 
 export const metadata: Metadata = {
-  title: messages.brand.name,
+  // Pagina sem titulo proprio mostra so a marca; as demais viram
+  // "Criar conta | CakeCraft", o que ajuda quem tem varias abas abertas.
+  title: { default: messages.brand.name, template: `%s | ${messages.brand.name}` },
   description: messages.brand.tagline,
 };
 
