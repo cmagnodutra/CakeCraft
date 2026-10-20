@@ -38,11 +38,23 @@ describe('Field', () => {
       expect(screen.getByRole('alert')).toHaveTextContent('Informe um e-mail válido.');
     });
 
-    it('com dica e erro juntos, o campo aponta para os dois', () => {
+    it('o erro substitui a dica: a mensagem de erro ja orienta, e mostrar as duas repete o texto', () => {
       render(<Field label="Senha" hint="Mínimo de 8 caracteres" error="Senha muito curta." />);
 
-      const described = screen.getByLabelText('Senha').getAttribute('aria-describedby') ?? '';
-      expect(described.split(' ')).toHaveLength(2);
+      const input = screen.getByLabelText('Senha');
+      expect(screen.queryByText('Mínimo de 8 caracteres')).not.toBeInTheDocument();
+      expect(screen.getByText('Senha muito curta.')).toBeInTheDocument();
+      expect(input.getAttribute('aria-describedby')?.split(' ')).toHaveLength(1);
+    });
+
+    it('quando o erro some, a dica volta', () => {
+      const { rerender } = render(
+        <Field label="Senha" hint="Mínimo de 8 caracteres" error="Curta." />,
+      );
+
+      rerender(<Field label="Senha" hint="Mínimo de 8 caracteres" />);
+
+      expect(screen.getByText('Mínimo de 8 caracteres')).toBeInTheDocument();
     });
   });
 
