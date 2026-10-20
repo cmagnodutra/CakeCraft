@@ -77,6 +77,14 @@ acento. O nome vive em `messages.brand.name` e um teste garante que a marca
 visual e o texto nunca divergem. Identificadores de codigo (`@cakecraft/*`) e
 o endereco do repositorio no GitHub seguem em minusculas, por convencao.
 
+**Landing.** Titulo, frase de valor e um unico botao, para `/cadastro`. Ela
+so foi feita depois de existir a rota do cadastro: um botao que leva a lugar
+nenhum e motivo de reprovacao direta. O titulo tem duas partes em linhas
+proprias (a oracao em romano e o fecho em italico), porque o balanceamento
+automatico de linhas partia a frase em italico no meio no celular. O espaco
+vazio a direita no desktop e intencional: e onde o bolo 3D vai entrar quando
+o builder existir.
+
 **Navegacao.** O cabecalho so tem a marca. Links como "Montar bolo" e
 "Entrar" entram junto das rotas que abrem: um botao que nao funciona e
 motivo de reprovacao direta na regua da disciplina.

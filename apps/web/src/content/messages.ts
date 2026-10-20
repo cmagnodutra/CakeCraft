@@ -17,6 +17,12 @@ export const messages = {
   a11y: {
     skipToContent: 'Pular para o conteúdo',
   },
+  landing: {
+    titleStart: 'Seu bolo, do seu jeito,',
+    titleAccent: 'com o preço na hora.',
+    body: 'Monte o seu bolo camada por camada, veja o valor a cada escolha e acompanhe o pedido até a retirada, sem esperar orçamento por mensagem.',
+    cta: 'Criar minha conta',
+  },
   auth: {
     register: {
       title: 'Criar conta',
