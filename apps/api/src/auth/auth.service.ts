@@ -155,6 +155,22 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
+  /**
+   * Sessao atual: devolve o usuario a partir do id que a JwtStrategy colocou
+   * no request. Consulta o banco, e nao so o token, por dois motivos: o XP e
+   * o nivel mudam sem o token mudar, e um usuario apagado ou anonimizado
+   * (LGPD) nao pode continuar com sessao so porque o JWT ainda nao expirou.
+   */
+  async me(userId: string): Promise<PublicUser> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+
+    if (!user || user.anonymizedAt) {
+      throw new UnauthorizedException('Sessao invalida.');
+    }
+
+    return this.toPublicUser(user);
+  }
+
   private toPublicUser(user: {
     id: string;
     name: string;
