@@ -259,4 +259,54 @@ describe('AuthService', () => {
       await expect(service.resetPassword('token-qualquer', 'nova-senha')).rejects.toThrow(/TODO/);
     });
   });
+
+  describe('me', () => {
+    const stored = {
+      id: 'user-1',
+      name: 'Mariana Silva',
+      email: 'mariana@example.com',
+      phone: '47999999999',
+      passwordHash: 'hash-secreto',
+      role: 'CLIENTE',
+      xp: 120,
+      level: 2,
+      anonymizedAt: null,
+    };
+
+    it('busca o usuario pelo id no banco (dados atuais, nao os do token)', async () => {
+      prismaMock.user.findUnique.mockResolvedValue(stored);
+
+      await service.me('user-1');
+
+      expect(prismaMock.user.findUnique).toHaveBeenCalledWith({ where: { id: 'user-1' } });
+    });
+
+    it('devolve so o usuario publico: nunca senha, telefone nem data de anonimizacao', async () => {
+      prismaMock.user.findUnique.mockResolvedValue(stored);
+
+      const user = await service.me('user-1');
+
+      expect(user).toEqual({
+        id: 'user-1',
+        name: 'Mariana Silva',
+        email: 'mariana@example.com',
+        role: 'CLIENTE',
+        xp: 120,
+        level: 2,
+      });
+      expect(JSON.stringify(user)).not.toContain('hash-secreto');
+    });
+
+    it('rejeita (401) quando o usuario do token nao existe mais', async () => {
+      prismaMock.user.findUnique.mockResolvedValue(null);
+
+      await expect(service.me('fantasma')).rejects.toBeInstanceOf(UnauthorizedException);
+    });
+
+    it('rejeita (401) usuario anonimizado (LGPD): o token antigo deixa de valer', async () => {
+      prismaMock.user.findUnique.mockResolvedValue({ ...stored, anonymizedAt: new Date() });
+
+      await expect(service.me('user-1')).rejects.toBeInstanceOf(UnauthorizedException);
+    });
+  });
 });

@@ -11,6 +11,7 @@ describe('AuthController', () => {
   const authServiceMock = {
     register: jest.fn(),
     login: jest.fn(),
+    me: jest.fn(),
   };
 
   const configMock = {
@@ -32,7 +33,8 @@ describe('AuthController', () => {
    */
   const makeResMock = () => {
     const cookie = jest.fn();
-    return { res: { cookie } as unknown as Response, cookie };
+    const clearCookie = jest.fn();
+    return { res: { cookie, clearCookie } as unknown as Response, cookie, clearCookie };
   };
 
   beforeEach(async () => {
@@ -139,5 +141,67 @@ describe('AuthController', () => {
       expect(result).toEqual({ user: publicUser });
       expect(cookie).toHaveBeenCalledTimes(2);
     });
+  });
+
+  describe('me', () => {
+    it('devolve o usuario da sessao, buscado pelo id que a JwtStrategy colocou no request', async () => {
+      authServiceMock.me.mockResolvedValue(publicUser);
+
+      const result = await controller.me({
+        id: 'user-1',
+        email: 'mariana@example.com',
+        role: 'CLIENTE',
+      });
+
+      expect(authServiceMock.me).toHaveBeenCalledWith('user-1');
+      expect(result).toEqual({ user: publicUser });
+    });
+  });
+
+  describe('logout', () => {
+    it.each([
+      ['development', false],
+      ['production', true],
+    ])('em %s limpa os dois cookies de autenticacao', (nodeEnv, secure) => {
+      configMock.get.mockReturnValue(nodeEnv);
+      const { res, clearCookie } = makeResMock();
+
+      controller.logout(res);
+
+      expect(clearCookie).toHaveBeenCalledTimes(2);
+      expect(clearCookie).toHaveBeenCalledWith('access_token', {
+        httpOnly: true,
+        sameSite: 'lax',
+        secure,
+      });
+      expect(clearCookie).toHaveBeenCalledWith('refresh_token', {
+        httpOnly: true,
+        sameSite: 'lax',
+        secure,
+        path: '/api/auth/refresh',
+      });
+    });
+
+    it.each(['development', 'production'])(
+      'em %s usa EXATAMENTE os mesmos atributos do login: o navegador so apaga o cookie se path e flags baterem',
+      async (nodeEnv) => {
+        configMock.get.mockReturnValue(nodeEnv);
+        authServiceMock.login.mockResolvedValue({
+          user: publicUser,
+          accessToken: 'a',
+          refreshToken: 'r',
+        });
+        const { res, cookie, clearCookie } = makeResMock();
+
+        await controller.login({ email: 'mariana@example.com', password: 'senha12345' }, res);
+        controller.logout(res);
+
+        for (const name of ['access_token', 'refresh_token']) {
+          const setOptions = cookie.mock.calls.find((call) => call[0] === name)?.[2];
+          const clearOptions = clearCookie.mock.calls.find((call) => call[0] === name)?.[1];
+          expect(clearOptions).toEqual(setOptions);
+        }
+      },
+    );
   });
 });
