@@ -167,6 +167,44 @@ describe('apiRequest', () => {
 
       await expect(apiRequest('/catalog')).rejects.toBeInstanceOf(NetworkError);
     });
+
+    describe('dica para quem desenvolve (a tela mostra so o aviso generico ao usuario)', () => {
+      let warn: jest.SpyInstance;
+
+      beforeEach(() => {
+        warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+        fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
+      });
+
+      afterEach(() => warn.mockRestore());
+
+      it('em desenvolvimento, o console diz qual URL falhou e como subir a API', async () => {
+        await apiRequest('/auth/register', { method: 'POST', body: {} }).catch(() => undefined);
+
+        expect(warn).toHaveBeenCalledTimes(1);
+        const text = String(warn.mock.calls[0][0]);
+        expect(text).toContain('http://api.test/api/auth/register');
+        expect(text).toContain('npm run dev:api');
+        expect(text).toContain('CORS_ORIGIN');
+      });
+
+      it('em producao, nao escreve nada no console do usuario', async () => {
+        jest.replaceProperty(process.env, 'NODE_ENV', 'production');
+
+        await apiRequest('/auth/register', { method: 'POST', body: {} }).catch(() => undefined);
+
+        expect(warn).not.toHaveBeenCalled();
+        jest.restoreAllMocks();
+      });
+
+      it('erro HTTP (o servidor respondeu) nao dispara a dica de rede', async () => {
+        fetchMock.mockResolvedValue(respond(500, { message: 'x' }));
+
+        await apiRequest('/catalog').catch(() => undefined);
+
+        expect(warn).not.toHaveBeenCalled();
+      });
+    });
   });
 
   it('em producao sem NEXT_PUBLIC_API_URL falha antes de qualquer requisicao', async () => {
