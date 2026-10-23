@@ -42,6 +42,7 @@ export async function apiRequest<T = unknown>(
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
+    warnNetworkFailure(url);
     throw new NetworkError();
   }
 
@@ -68,4 +69,24 @@ async function readJson(response: Response): Promise<unknown> {
   } catch {
     return undefined;
   }
+}
+
+/**
+ * Dica so para quem desenvolve: a tela mostra ao usuario apenas o aviso
+ * generico de conexao, entao o console diz o que de fato verificar. As causas
+ * mais comuns em desenvolvimento sao a API nao estar rodando (ou ter
+ * recusado subir por falta do apps/api/.env) e o CORS_ORIGIN nao bater com o
+ * endereco em que o frontend esta aberto (localhost x 127.0.0.1).
+ * Em producao nao escreve nada: o usuario nao precisa ver isso.
+ */
+function warnNetworkFailure(url: string): void {
+  if (process.env.NODE_ENV === 'production') {
+    return;
+  }
+  console.warn(
+    `[CakeCraft] Nao foi possivel alcancar ${url}. Verifique: ` +
+      '(1) a API esta rodando? (npm run dev:api, com o Docker de pe e o apps/api/.env criado); ' +
+      '(2) o CORS_ORIGIN da API e igual ao endereco desta pagina? ' +
+      '(abra pelo mesmo host: localhost ou 127.0.0.1, nao os dois).',
+  );
 }
