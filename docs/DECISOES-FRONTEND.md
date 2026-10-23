@@ -131,10 +131,10 @@ o Postgres; quem cobre o banco sao os testes e2e da API.
 
 ## Pendencias de backend encontradas (nao sao do frontend)
 
-1. **Sem `GET /api/auth/me` e sem `POST /api/auth/logout`.** Sem `me`, ao
-   recarregar a pagina o frontend nao sabe se ha alguem logado nem protege
-   rotas de admin; sem `logout`, os cookies httpOnly nao podem ser limpos pelo
-   JavaScript. Aprovadas pelo autor, vao na branch `feature/auth-session`.
+1. **`GET /api/auth/me` e `POST /api/auth/logout`: FEITO** na branch
+   `feature/auth-session` (contrato em `docs/CONTRATO-SESSAO.md`). Consequencia
+   que a tela de login precisa tratar: a sessao dura 15 minutos, porque nao ha
+   rota de refresh (item 4).
 2. **Senhas longas e bcrypt.** O bcrypt so usa os primeiros 72 bytes: duas
    senhas com o mesmo comeco de 72 caracteres sao aceitas como iguais
    (verificado em teste manual) e o `RegisterDto`/`LoginDto` nao tem limite
