@@ -76,3 +76,31 @@ criterio do projeto e `npm run audit:prod`, que fecha em 0.
 (via ferramentas de teste) aparecem como deprecated. Sao dependencias
 transitivas de desenvolvimento, sem efeito em producao; sao resolvidas
 quando o Jest/jsdom publicarem versoes que as troquem.
+
+## Advisories novos continuam saindo (rotina)
+
+Em outubro/2026 sairam advisories para versoes que o projeto tinha acabado de
+adotar: Next 16.0.0 a 16.4.2 (RCE em otimizacao de imagem e em `use cache`,
+DoS em Server Actions), body-parser 2.0.0 a 2.3.0 (DoS), multer 2.0.0 a 2.4.0
+(DoS) e nodemailer ate 10.1.3 (parsing de enderecos). O projeto nao usa
+`next/image`, `use cache`, Server Actions nem upload de arquivos, entao nao
+estava exposto, mas o criterio e `npm run audit:prod` = 0 e ele foi aplicado.
+
+Rotina: rodar `npm run audit:prod` antes de cada merge e a cada sessao.
+
+### Como corrigir sem se enganar (licoes desta rodada)
+
+1. `npm audit fix` (sem `--force`) resolve o que tem correcao compativel
+   (body-parser, multer, fast-uri). A "correcao" que ele sugere para o
+   `@nestjs/platform-express` marcada como MAJOR e um REBAIXAMENTO: ignorar.
+2. O npm nao re-resolve sozinho uma dependencia aninhada em
+   `apps/web/node_modules` (ficou o Next 16.4.0 mesmo com o `package.json`
+   pedindo `^16.4.3`). Correcao: subir o minimo declarado, remover do
+   `package-lock.json` as entradas `apps/web/node_modules/*` e reinstalar.
+3. **Nunca confie so no "found 0 vulnerabilities".** Se o pacote sumiu da
+   instalacao, o audit tambem fecha em 0. Conferir em disco:
+   `node -e "require('multer')"` e `npm ls --omit=dev` sem erros. Isso evitou
+   um falso zero quando o `multer` desapareceu apos um override mal posto.
+4. Nao subir o `overrides.multer` para uma versao nova a mao: o
+   `platform-express` pede uma versao exata e o conflito fez o pacote sumir.
+   Deixar o intervalo `^2.4.0` e deixar o `audit fix` atualizar.
