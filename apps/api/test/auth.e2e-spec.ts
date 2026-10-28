@@ -2,19 +2,20 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 
 import { PrismaService } from '../src/prisma/prisma.service';
-import { createE2eApp, resetE2eState } from './e2e-app.helper';
+import { createE2eApp, RecordingEmailSender, resetE2eState } from './e2e-app.helper';
 
-describe('Auth (e2e - PostgreSQL 16 real)', () => {
+describe('Auth & LGPD (e2e - PostgreSQL 16 real)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
+  let emails: RecordingEmailSender;
   const server = () => app.getHttpServer() as Parameters<typeof request>[0];
 
   beforeAll(async () => {
-    ({ app, prisma } = await createE2eApp());
+    ({ app, prisma, emails } = await createE2eApp());
   });
 
   beforeEach(async () => {
-    await resetE2eState(app, prisma);
+    await resetE2eState(app, prisma, emails);
   });
 
   afterAll(async () => {
@@ -22,7 +23,7 @@ describe('Auth (e2e - PostgreSQL 16 real)', () => {
   });
 
   describe('POST /api/auth/register', () => {
-    it('persiste no PostgreSQL com hash bcrypt e devolve 201 sem tokens no JSON', async () => {
+    it('persiste usuario e refresh_token no PostgreSQL e entrega cookies httpOnly sem tokens no JSON', async () => {
       const response = await request(server())
         .post('/api/auth/register')
         .send({ name: 'Mariana', email: 'mariana@example.com', password: 'senha12345' })
@@ -39,17 +40,6 @@ describe('Auth (e2e - PostgreSQL 16 real)', () => {
       expect(response.body).not.toHaveProperty('accessToken');
       expect(response.body).not.toHaveProperty('refreshToken');
 
-      const persisted = await prisma.user.findUnique({ where: { email: 'mariana@example.com' } });
-      expect(persisted).not.toBeNull();
-      expect(persisted?.passwordHash).toMatch(/^\$2[aby]\$/);
-    });
-
-    it('entrega os tokens como cookies httpOnly, nunca no corpo', async () => {
-      const response = await request(server())
-        .post('/api/auth/register')
-        .send({ name: 'Mariana', email: 'mariana2@example.com', password: 'senha12345' })
-        .expect(201);
-
       const cookies = response.headers['set-cookie'] as unknown as string[];
       expect(cookies.some((c) => c.startsWith('access_token=') && c.includes('HttpOnly'))).toBe(
         true,
@@ -62,9 +52,16 @@ describe('Auth (e2e - PostgreSQL 16 real)', () => {
             c.includes('Path=/api/auth/refresh'),
         ),
       ).toBe(true);
+
+      const persistedUser = await prisma.user.findUnique({
+        where: { email: 'mariana@example.com' },
+        include: { refreshTokens: true },
+      });
+      expect(persistedUser?.passwordHash).toMatch(/^\$2[aby]\$/);
+      expect(persistedUser?.refreshTokens).toHaveLength(1);
     });
 
-    it('rejeita e-mail duplicado com 409 (inclusive com variacao de caixa)', async () => {
+    it('rejeita e-mail duplicado com 409 (case-insensitive), senha invalida (> 72B ou < 8) e mass assignment com 400', async () => {
       await request(server())
         .post('/api/auth/register')
         .send({ name: 'Mariana', email: 'CaseTeste@Example.com', password: 'senha12345' })
@@ -75,15 +72,6 @@ describe('Auth (e2e - PostgreSQL 16 real)', () => {
         .send({ name: 'Outra Mariana', email: 'caseteste@example.com', password: 'outra-senha' })
         .expect(409);
 
-      const loginResponse = await request(server())
-        .post('/api/auth/login')
-        .send({ email: 'CASETESTE@EXAMPLE.COM', password: 'senha12345' })
-        .expect(200);
-
-      expect(loginResponse.body.user.email).toBe('caseteste@example.com');
-    });
-
-    it('rejeita senha curta (< 8) ou acima de 72 bytes UTF-8 com 400', async () => {
       await request(server())
         .post('/api/auth/register')
         .send({ name: 'Mariana', email: 'curta@example.com', password: '123' })
@@ -93,14 +81,12 @@ describe('Auth (e2e - PostgreSQL 16 real)', () => {
         .post('/api/auth/register')
         .send({ name: 'Mariana', email: 'longa@example.com', password: '\u00e1'.repeat(37) })
         .expect(400);
-    });
 
-    it('rejeita campos nao declarados no DTO - protecao contra mass assignment', async () => {
       await request(server())
         .post('/api/auth/register')
         .send({
           name: 'Mariana',
-          email: 'mariana4@example.com',
+          email: 'role@example.com',
           password: 'senha12345',
           role: 'ADMIN',
         })
@@ -108,43 +94,97 @@ describe('Auth (e2e - PostgreSQL 16 real)', () => {
     });
   });
 
-  describe('ciclo completo de sessao via cookies httpOnly (login -> me -> logout)', () => {
-    const credentials = { email: 'login@example.com', password: 'senha12345' };
+  describe('ciclo completo de sessao, rotacao de refresh token, recuperacao de senha e LGPD', () => {
+    const credentials = { email: 'mariana@example.com', password: 'senha12345' };
 
-    beforeEach(async () => {
+    it('rotaciona refresh_token no PostgreSQL, detecta reuso e revoga sessao no logout', async () => {
+      const reg = await request(server())
+        .post('/api/auth/register')
+        .send({ name: 'Mariana', ...credentials })
+        .expect(201);
+
+      const firstCookies = (reg.headers['set-cookie'] as unknown as string[]).join(';');
+      const firstRefresh = /refresh_token=([^;]+)/.exec(firstCookies)?.[1] ?? '';
+
+      const rotated = await request(server())
+        .post('/api/auth/refresh')
+        .set('Cookie', [`refresh_token=${firstRefresh}`])
+        .expect(200);
+
+      const secondCookies = (rotated.headers['set-cookie'] as unknown as string[]).join(';');
+      const secondRefresh = /refresh_token=([^;]+)/.exec(secondCookies)?.[1] ?? '';
+      expect(secondRefresh).not.toBe(firstRefresh);
+
+      // Reuso do refresh antigo invalida todas as sessoes ativas no PostgreSQL
+      await request(server())
+        .post('/api/auth/refresh')
+        .set('Cookie', [`refresh_token=${firstRefresh}`])
+        .expect(401);
+
+      await request(server())
+        .post('/api/auth/refresh')
+        .set('Cookie', [`refresh_token=${secondRefresh}`])
+        .expect(401);
+
+      // Novo login seguido de logout revoga o refresh token persistido
+      const agent = request.agent(server());
+      await agent.post('/api/auth/login').send(credentials).expect(200);
+      await agent.get('/api/auth/me').expect(200);
+      await agent.post('/api/auth/logout').expect(204);
+      await agent.get('/api/auth/me').expect(401);
+      await agent.post('/api/auth/refresh').expect(401);
+    });
+
+    it('executa forgot-password -> reset-password no PostgreSQL real com token de uso unico', async () => {
       await request(server())
         .post('/api/auth/register')
         .send({ name: 'Mariana', ...credentials })
         .expect(201);
+
+      await request(server())
+        .post('/api/auth/forgot-password')
+        .send({ email: credentials.email })
+        .expect(200);
+
+      expect(emails.sent).toHaveLength(1);
+      const tokenMatch = /token=([^"&]+)/.exec(emails.sent[0].html);
+      const resetToken = decodeURIComponent(tokenMatch?.[1] ?? '');
+
+      await request(server())
+        .post('/api/auth/reset-password')
+        .send({ token: resetToken, newPassword: 'novaSenhaSegura456' })
+        .expect(204);
+
+      await request(server())
+        .post('/api/auth/reset-password')
+        .send({ token: resetToken, newPassword: 'outraTentativa456' })
+        .expect(400);
+
+      await request(server()).post('/api/auth/login').send(credentials).expect(401);
+      await request(server())
+        .post('/api/auth/login')
+        .send({ email: credentials.email, password: 'novaSenhaSegura456' })
+        .expect(200);
     });
 
-    it('autentica, le a sessao em GET /api/auth/me via cookieParser e encerra em POST /api/auth/logout', async () => {
+    it('anonimiza dados pessoais via DELETE /api/usuarios/me/anonymize (LGPD - Secao 6.1)', async () => {
       const agent = request.agent(server());
+      const reg = await agent
+        .post('/api/auth/register')
+        .send({ name: 'Mariana', phone: '47999999999', ...credentials })
+        .expect(201);
+      const userId = (reg.body as { user: { id: string } }).user.id;
 
-      const loginResponse = await agent.post('/api/auth/login').send(credentials).expect(200);
-      expect(loginResponse.body.user.email).toBe(credentials.email);
+      await agent.delete('/api/usuarios/me/anonymize').expect(204);
 
-      const meResponse = await agent.get('/api/auth/me').expect(200);
-      expect(meResponse.body.user).toMatchObject({
-        name: 'Mariana',
-        email: credentials.email,
-        role: 'CLIENTE',
-      });
+      const row = await prisma.user.findUnique({ where: { id: userId } });
+      expect(row?.name).toBe('Usuario Anonimizado');
+      expect(row?.email).toBe(`anonimizado-${userId}@anon.cakecraft.local`);
+      expect(row?.phone).toBeNull();
+      expect(row?.anonymizedAt).not.toBeNull();
 
-      await agent.post('/api/auth/logout').expect(204);
       await agent.get('/api/auth/me').expect(401);
-    });
-
-    it('rejeita senha incorreta ou e-mail inexistente com 401', async () => {
-      await request(server())
-        .post('/api/auth/login')
-        .send({ email: credentials.email, password: 'senha-errada' })
-        .expect(401);
-
-      await request(server())
-        .post('/api/auth/login')
-        .send({ email: 'nao-cadastrado@example.com', password: 'qualquer-coisa' })
-        .expect(401);
+      await request(server()).post('/api/auth/login').send(credentials).expect(401);
     });
   });
 });

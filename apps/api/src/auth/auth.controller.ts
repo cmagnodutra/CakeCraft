@@ -1,38 +1,40 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, Res, UseGuards } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import type { AuthenticatedUser } from '../common/types/authenticated-request';
-import { AppEnvironment } from '../config/env.validation';
-import { AuthService, PublicUser, TokenPair } from './auth.service';
+import { AuthCookiesService } from './auth-cookies.service';
+import { AuthService, PublicUser } from './auth.service';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 /**
- * O cookie de refresh so e enviado pelo browser de volta pra esta rota
- * (via 'path'), em vez de em toda requisicao a API - reduz a janela de
- * exposicao do token de vida mais longa.
- */
-const REFRESH_TOKEN_COOKIE_PATH = '/api/auth/refresh';
-
-const ACCESS_TOKEN_COOKIE = 'access_token';
-const REFRESH_TOKEN_COOKIE = 'refresh_token';
-
-/**
- * Limite estrito contra ataques de forca bruta e abuso de criacao de contas
- * (RNF05 e Secao 6 do RFC): 10 tentativas por minuto por IP.
+ * Limite estrito contra ataques de forca bruta e abuso de criacao/recuperacao
+ * de contas (RNF05 e Secao 6 do RFC).
  */
 export const AUTH_THROTTLE_TTL_MS = 60_000;
 export const AUTH_THROTTLE_LIMIT = 10;
+export const PASSWORD_RESET_THROTTLE_LIMIT = 5;
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
-    private readonly config: ConfigService<AppEnvironment, true>,
+    private readonly authCookies: AuthCookiesService,
   ) {}
 
   /** UC03, passo 2 - RF01. */
@@ -44,7 +46,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<{ user: PublicUser }> {
     const { user, accessToken, refreshToken } = await this.authService.register(dto);
-    this.setAuthCookies(res, { accessToken, refreshToken });
+    this.authCookies.setAuthCookies(res, { accessToken, refreshToken });
     return { user };
   }
 
@@ -57,7 +59,25 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<{ user: PublicUser }> {
     const { user, accessToken, refreshToken } = await this.authService.login(dto);
-    this.setAuthCookies(res, { accessToken, refreshToken });
+    this.authCookies.setAuthCookies(res, { accessToken, refreshToken });
+    return { user };
+  }
+
+  /**
+   * Rotaciona a sessao via cookie httpOnly `refresh_token` (restrito ao path
+   * `/api/auth/refresh`), emitindo novos cookies `access_token` e
+   * `refresh_token` sem exigir novo login (Secao 3.2 e Secao 6 do RFC).
+   */
+  @Post('refresh')
+  @Throttle({ default: { ttl: AUTH_THROTTLE_TTL_MS, limit: AUTH_THROTTLE_LIMIT } })
+  @HttpCode(HttpStatus.OK)
+  async refresh(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<{ user: PublicUser }> {
+    const rawRefresh = this.authCookies.extractRefreshToken(req);
+    const { user, accessToken, refreshToken } = await this.authService.refresh(rawRefresh);
+    this.authCookies.setAuthCookies(res, { accessToken, refreshToken });
     return { user };
   }
 
@@ -73,61 +93,34 @@ export class AuthController {
   }
 
   /**
-   * Sai: manda o navegador apagar os dois cookies. E publico de proposito (sem
-   * JwtAuthGuard): se o access token ja expirou, a pessoa ainda precisa
-   * conseguir sair. Tambem e idempotente: sem sessao, responde 204 do mesmo
-   * jeito.
-   *
-   * Limite conhecido: isto so limpa os cookies do navegador. Os tokens nao
-   * sao revogados no servidor (nao ha refresh token persistido ainda), entao
-   * um token roubado vale ate expirar (15 min o de acesso). Revogacao de
-   * verdade entra junto da rotacao de refresh token.
+   * Encerra a sessao: revoga os refresh tokens ativos do usuario no servidor
+   * (caso haja cookie `access_token` autentico, mesmo expirado) e instrui o
+   * navegador a apagar os dois cookies httpOnly. Sempre idempotente (204).
    */
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
-  logout(@Res({ passthrough: true }) res: Response): void {
-    res.clearCookie(ACCESS_TOKEN_COOKIE, this.cookieOptions('access'));
-    res.clearCookie(REFRESH_TOKEN_COOKIE, this.cookieOptions('refresh'));
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response): Promise<void> {
+    const rawAccess = this.authCookies.extractAccessToken(req);
+    await this.authService.revokeSessionsFromAccessToken(rawAccess);
+    this.authCookies.clearAuthCookies(res);
   }
 
-  /**
-   * Seta access e refresh token como cookies httpOnly - nunca aparecem no
-   * corpo da resposta (diferente do codigo de referencia, que devolvia
-   * Bearer token no JSON).
-   *
-   * Sem maxAge explicito de proposito: sem ele, o cookie e de sessao
-   * (some quando o browser fecha) mas isso e so cosmetico - a
-   * JwtStrategy ja rejeita um token expirado com ignoreExpiration:
-   * false, entao um cookie "sobrevivendo" ao token nao concede acesso
-   * nenhum.
-   */
-  private setAuthCookies(res: Response, tokens: TokenPair): void {
-    res.cookie(ACCESS_TOKEN_COOKIE, tokens.accessToken, this.cookieOptions('access'));
-    res.cookie(REFRESH_TOKEN_COOKIE, tokens.refreshToken, this.cookieOptions('refresh'));
+  /** UC03, passo 4 - dispara e-mail de recuperacao sem revelar se a conta existe. */
+  @Post('forgot-password')
+  @Throttle({ default: { ttl: AUTH_THROTTLE_TTL_MS, limit: PASSWORD_RESET_THROTTLE_LIMIT } })
+  @HttpCode(HttpStatus.OK)
+  async forgotPassword(@Body() dto: ForgotPasswordDto): Promise<{ message: string }> {
+    await this.authService.forgotPassword(dto.email);
+    return {
+      message: 'Se o e-mail estiver cadastrado, enviaremos as instrucoes de recuperacao.',
+    };
   }
 
-  /**
-   * Atributos de cada cookie, num unico lugar. Quem cria (login, cadastro) e
-   * quem apaga (logout) usam ESTE metodo: o navegador so remove um cookie se
-   * path e flags forem identicos aos de quando ele foi criado, e atributos
-   * escritos em dois lugares acabam divergindo.
-   *
-   * secure e condicional a NODE_ENV, nao sempre 'true': em desenvolvimento
-   * local (http://localhost, sem HTTPS) um cookie marcado Secure seria
-   * silenciosamente descartado pelo proprio browser, quebrando login em
-   * dev. sameSite: 'lax' ja mitiga a maioria dos casos praticos de CSRF
-   * mantendo o cookie utilizavel em navegacao normal (GET de outra
-   * origem); token de dupla submissao fica como possivel reforco futuro,
-   * nao bloqueante (ver PLANO-EXECUCAO, Secao 4.3).
-   *
-   * O de refresh so e enviado de volta pelo navegador para a rota de
-   * refresh (via 'path'), reduzindo a janela de exposicao do token de vida
-   * mais longa.
-   */
-  private cookieOptions(kind: 'access' | 'refresh') {
-    const isProduction = this.config.get('NODE_ENV', { infer: true }) === 'production';
-    const base = { httpOnly: true, sameSite: 'lax' as const, secure: isProduction };
-
-    return kind === 'refresh' ? { ...base, path: REFRESH_TOKEN_COOKIE_PATH } : base;
+  /** UC03, passo 4 - redefine a senha com token de uso unico e revoga sessoes antigas. */
+  @Post('reset-password')
+  @Throttle({ default: { ttl: AUTH_THROTTLE_TTL_MS, limit: PASSWORD_RESET_THROTTLE_LIMIT } })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async resetPassword(@Body() dto: ResetPasswordDto): Promise<void> {
+    await this.authService.resetPassword(dto.token, dto.newPassword);
   }
 }
