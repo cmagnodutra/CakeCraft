@@ -49,6 +49,10 @@ export const envValidationSchema = Joi.object({
   SMTP_USER: Joi.string().required(),
   SMTP_PASSWORD: Joi.string().required(),
   SMTP_FROM: Joi.string().required(),
+
+  /** RNF05 - janela e teto global de requisicoes por IP no ThrottlerGuard. */
+  THROTTLE_TTL_MS: Joi.number().integer().min(1000).default(60000),
+  THROTTLE_LIMIT: Joi.number().integer().min(1).default(60),
 })
   // Reporta todos os problemas de configuracao de uma vez, em vez de fazer
   // o desenvolvedor descobrir um por vez a cada tentativa de boot.
@@ -71,4 +75,6 @@ export interface AppEnvironment {
   SMTP_USER: string;
   SMTP_PASSWORD: string;
   SMTP_FROM: string;
+  THROTTLE_TTL_MS: number;
+  THROTTLE_LIMIT: number;
 }
