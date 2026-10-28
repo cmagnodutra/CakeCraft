@@ -33,7 +33,14 @@ resolvidos por npm workspaces.
 Repositório em construção incremental. O backend (auth, catálogo,
 precificação e e-mail) está implementado e testado; o frontend começou pelo
 esqueleto do workspace e segue com design system, autenticação, Cake Builder
-e administração do catálogo. Decisões do frontend: `docs/DECISOES-FRONTEND.md`.
+e administração do catálogo.
+
+## Documentação
+
+- `docs/RFC-001-CakeCraft.md`: especificação oficial do projeto (RFC-001 v1.4 - requisitos funcionais, não funcionais, regras de negócio e arquitetura).
+- `docs/CONTRATO-SESSAO.md`: contrato HTTP de sessão (`GET /api/auth/me` e `POST /api/auth/logout`).
+- `docs/DECISOES-FRONTEND.md`: decisões técnicas e de design do frontend (ADRs).
+- `docs/SEGURANCA-DEPENDENCIAS.md`: política de auditoria de dependências e scripts de instalação.
 
 ## Pré-requisitos
 
