@@ -1,9 +1,10 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { UnprocessableEntityException } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+import { IngredientType } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
-import { ASSEMBLY_BASE_FEE, PricingService } from './pricing.service';
 import { CakeLayerInputDto } from './dto/calculate-price.dto';
+import { ASSEMBLY_BASE_FEE, PricingService } from './pricing.service';
 
 /**
  * Meta de cobertura do Apendice B do RFC: 95% para o PricingService, dada
@@ -31,9 +32,9 @@ describe('PricingService', () => {
   describe('RN02 - calculo volumetrico de preco', () => {
     it('soma (preco/kg x peso) de um andar e adiciona a taxa base', async () => {
       prismaMock.ingredient.findMany.mockResolvedValue([
-        { id: 'massa-choc', isAerated: false, pricePerKg: 38 },
-        { id: 'brigadeiro', isAerated: false, pricePerKg: 40 },
-        { id: 'chantilly', isAerated: false, pricePerKg: 50 },
+        { id: 'massa-choc', type: IngredientType.MASSA, isAerated: false, pricePerKg: 38 },
+        { id: 'brigadeiro', type: IngredientType.RECHEIO, isAerated: false, pricePerKg: 40 },
+        { id: 'chantilly', type: IngredientType.COBERTURA, isAerated: false, pricePerKg: 50 },
       ]);
 
       const result = await service.calculate({
@@ -49,14 +50,14 @@ describe('PricingService', () => {
       });
 
       // (38 + 50 + 40) * 1.5 = 192
-      expect(result.layers[0].subtotal).toBeCloseTo(192);
-      expect(result.totalPrice).toBeCloseTo(192 + ASSEMBLY_BASE_FEE);
+      expect(result.layers[0].subtotal).toBe(192);
+      expect(result.totalPrice).toBe(192 + ASSEMBLY_BASE_FEE);
     });
 
     it('soma o subtotal de cada andar independentemente antes de aplicar a taxa base uma unica vez', async () => {
       prismaMock.ingredient.findMany.mockResolvedValue([
-        { id: 'massa-choc', isAerated: false, pricePerKg: 30 },
-        { id: 'chantilly', isAerated: false, pricePerKg: 20 },
+        { id: 'massa-choc', type: IngredientType.MASSA, isAerated: false, pricePerKg: 30 },
+        { id: 'chantilly', type: IngredientType.COBERTURA, isAerated: false, pricePerKg: 20 },
       ]);
 
       const result = await service.calculate({
@@ -79,15 +80,38 @@ describe('PricingService', () => {
       });
 
       // andar 1: (30+20)*1 = 50 ; andar 2: (30+20)*2 = 100
-      expect(result.layers[0].subtotal).toBeCloseTo(50);
-      expect(result.layers[1].subtotal).toBeCloseTo(100);
+      expect(result.layers[0].subtotal).toBe(50);
+      expect(result.layers[1].subtotal).toBe(100);
       // taxa base aparece uma unica vez, nao por andar
-      expect(result.totalPrice).toBeCloseTo(150 + ASSEMBLY_BASE_FEE);
+      expect(result.totalPrice).toBe(150 + ASSEMBLY_BASE_FEE);
+    });
+
+    it('evita erro de ponto flutuante IEEE-754 usando aritmetica inteira em centavos e gramas (17.00 x 1.005 = 17.09, nao 17.08)', async () => {
+      prismaMock.ingredient.findMany.mockResolvedValue([
+        { id: 'massa-simples', type: IngredientType.MASSA, isAerated: false, pricePerKg: '10.00' },
+        { id: 'glace', type: IngredientType.COBERTURA, isAerated: false, pricePerKg: '7.00' },
+      ]);
+
+      const result = await service.calculate({
+        floors: [
+          floor({
+            floorNumber: 1,
+            doughIngredientId: 'massa-simples',
+            coverageIngredientId: 'glace',
+            fillingIngredientIds: [],
+            estimatedWeightKg: 1.005,
+          }),
+        ],
+      });
+
+      // Em ponto flutuante JS: Math.round(17 * 1.005 * 100) / 100 === 17.08 (errado!).
+      // Em centavos x gramas: (1700 * 1005 + 500) // 1000 === 1709 centavos === 17.09.
+      expect(result.layers[0].pricePerKgCombined).toBe(17);
+      expect(result.layers[0].subtotal).toBe(17.09);
+      expect(result.totalPrice).toBe(42.09);
     });
 
     it('ignora ingredientes inativos na precificacao (nao entram no mapa de precos)', async () => {
-      // O findMany real ja filtra active: true - aqui simulamos que o
-      // ingrediente inativo simplesmente nao volta na consulta.
       prismaMock.ingredient.findMany.mockResolvedValue([]);
 
       await expect(
@@ -148,9 +172,9 @@ describe('PricingService', () => {
 
     it('o calculate() completo tambem rejeita a combinacao invalida com 422', async () => {
       prismaMock.ingredient.findMany.mockResolvedValue([
-        { id: 'pao-de-lo', isAerated: true, pricePerKg: 35 },
-        { id: 'massa-choc', isAerated: false, pricePerKg: 38 },
-        { id: 'chantilly', isAerated: false, pricePerKg: 50 },
+        { id: 'pao-de-lo', type: IngredientType.MASSA, isAerated: true, pricePerKg: 35 },
+        { id: 'massa-choc', type: IngredientType.MASSA, isAerated: false, pricePerKg: 38 },
+        { id: 'chantilly', type: IngredientType.COBERTURA, isAerated: false, pricePerKg: 50 },
       ]);
 
       await expect(
@@ -165,7 +189,101 @@ describe('PricingService', () => {
     });
   });
 
-  describe('validacao de ingredientes', () => {
+  describe('validacao de dominio dos slots e andares', () => {
+    const validCatalog = [
+      { id: 'massa-choc', type: IngredientType.MASSA, isAerated: false, pricePerKg: 38 },
+      { id: 'brigadeiro', type: IngredientType.RECHEIO, isAerated: false, pricePerKg: 40 },
+      { id: 'chantilly', type: IngredientType.COBERTURA, isAerated: false, pricePerKg: 50 },
+    ];
+
+    it('rejeita com 422 quando doughIngredientId nao e do tipo MASSA', async () => {
+      prismaMock.ingredient.findMany.mockResolvedValue(validCatalog);
+
+      await expect(
+        service.calculate({
+          floors: [
+            floor({
+              floorNumber: 1,
+              doughIngredientId: 'brigadeiro',
+              coverageIngredientId: 'chantilly',
+            }),
+          ],
+        }),
+      ).rejects.toBeInstanceOf(UnprocessableEntityException);
+    });
+
+    it('rejeita com 422 quando coverageIngredientId nao e do tipo COBERTURA', async () => {
+      prismaMock.ingredient.findMany.mockResolvedValue(validCatalog);
+
+      await expect(
+        service.calculate({
+          floors: [
+            floor({
+              floorNumber: 1,
+              doughIngredientId: 'massa-choc',
+              coverageIngredientId: 'massa-choc',
+            }),
+          ],
+        }),
+      ).rejects.toBeInstanceOf(UnprocessableEntityException);
+    });
+
+    it('rejeita com 422 quando um item de fillingIngredientIds nao e do tipo RECHEIO', async () => {
+      prismaMock.ingredient.findMany.mockResolvedValue(validCatalog);
+
+      await expect(
+        service.calculate({
+          floors: [
+            floor({
+              floorNumber: 1,
+              doughIngredientId: 'massa-choc',
+              coverageIngredientId: 'chantilly',
+              fillingIngredientIds: ['chantilly'],
+            }),
+          ],
+        }),
+      ).rejects.toBeInstanceOf(UnprocessableEntityException);
+    });
+
+    it('rejeita com 422 recheios duplicados no mesmo andar (protege PK composta de CakeLayerFilling)', async () => {
+      prismaMock.ingredient.findMany.mockResolvedValue(validCatalog);
+
+      await expect(
+        service.calculate({
+          floors: [
+            floor({
+              floorNumber: 1,
+              doughIngredientId: 'massa-choc',
+              coverageIngredientId: 'chantilly',
+              fillingIngredientIds: ['brigadeiro', 'brigadeiro'],
+            }),
+          ],
+        }),
+      ).rejects.toBeInstanceOf(UnprocessableEntityException);
+    });
+
+    it('rejeita com 422 andares com floorNumber duplicado ou fora da sequencia 1..N', async () => {
+      prismaMock.ingredient.findMany.mockResolvedValue(validCatalog);
+
+      await expect(
+        service.calculate({
+          floors: [
+            floor({ floorNumber: 1, doughIngredientId: 'massa-choc' }),
+            floor({ floorNumber: 1, doughIngredientId: 'massa-choc' }),
+          ],
+        }),
+      ).rejects.toBeInstanceOf(UnprocessableEntityException);
+
+      await expect(
+        service.calculate({
+          floors: [
+            floor({ floorNumber: 1, doughIngredientId: 'massa-choc' }),
+            floor({ floorNumber: 3, doughIngredientId: 'massa-choc' }),
+          ],
+        }),
+      ).rejects.toBeInstanceOf(UnprocessableEntityException);
+    });
+
     it('rejeita ingrediente inexistente com 422, listando o id no erro', async () => {
       prismaMock.ingredient.findMany.mockResolvedValue([]);
 
@@ -178,8 +296,8 @@ describe('PricingService', () => {
 
     it('busca no banco apenas os ingredientes referenciados na requisicao (RNF01)', async () => {
       prismaMock.ingredient.findMany.mockResolvedValue([
-        { id: 'massa-choc', isAerated: false, pricePerKg: 38 },
-        { id: 'chantilly', isAerated: false, pricePerKg: 50 },
+        { id: 'massa-choc', type: IngredientType.MASSA, isAerated: false, pricePerKg: 38 },
+        { id: 'chantilly', type: IngredientType.COBERTURA, isAerated: false, pricePerKg: 50 },
       ]);
 
       await service.calculate({
