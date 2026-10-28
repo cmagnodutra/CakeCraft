@@ -132,18 +132,20 @@ o Postgres; quem cobre o banco sao os testes e2e da API.
 ## Pendencias de backend encontradas (nao sao do frontend)
 
 1. **`GET /api/auth/me` e `POST /api/auth/logout`: FEITO** na branch
-   `feature/auth-session` (contrato em `docs/CONTRATO-SESSAO.md`). Consequencia
-   que a tela de login precisa tratar: a sessao dura 15 minutos, porque nao ha
-   rota de refresh (item 4).
+   `feature/auth-session` e endurecido com revogacao server-side na branch
+   `feature/auth-complete` (contrato em `docs/CONTRATO-SESSAO.md`).
 2. **Senhas longas e bcrypt: FEITO** na branch `fix/backend-hardening`.
-   `RegisterDto` e `LoginDto` rejeitam com 400 senhas acima de 72 bytes UTF-8
-   (`@MaxByteLength(72)`), e `validateRegister` espelha a regra no frontend.
+   `RegisterDto`, `LoginDto` e `ResetPasswordDto` rejeitam com 400 senhas acima
+   de 72 bytes UTF-8 (`@MaxByteLength(72)`), e o frontend espelha a regra.
 3. **Rate limiting (RNF05 do RFC): FEITO** na branch `fix/backend-hardening`.
    `@nestjs/throttler` configurado via `APP_GUARD` (60 req/min global por IP,
-   10 req/min em `/api/auth/login` e `/api/auth/register`, `/api/health`
-   isenta).
-4. **Sem rota de refresh** (`AuthService.refresh` e TODO). O access token
-   expira em 15 minutos e hoje nao ha como renova-lo.
+   10 req/min em `/api/auth/login`, `/api/auth/register` e `/api/auth/refresh`,
+   5 req/min em `/api/auth/forgot-password` e `/api/auth/reset-password`,
+   `/api/health` isenta).
+4. **Rota de refresh, recuperacao de senha e anonimizacao LGPD: FEITO** na
+   branch `feature/auth-complete` (`POST /api/auth/refresh` com rotacao SHA-256
+   e deteccao de reuso, `POST /api/auth/forgot-password`,
+   `POST /api/auth/reset-password` e `DELETE /api/usuarios/me/anonymize`).
 
 ## Decisoes de design ja tomadas (valem para as proximas branches)
 

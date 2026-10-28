@@ -76,6 +76,9 @@ const fakePrisma = {
       return Promise.resolve(created);
     },
   },
+  refreshToken: {
+    create: () => Promise.resolve({ id: randomUUID() }),
+  },
   ingredient: {
     findMany: ({ where }: { where?: { active?: boolean } }) => {
       const list =

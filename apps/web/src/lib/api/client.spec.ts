@@ -215,4 +215,111 @@ describe('apiRequest', () => {
     await expect(apiRequest('/catalog')).rejects.toThrow(/NEXT_PUBLIC_API_URL/);
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  describe('renovacao silenciosa de sessao (401 -> POST /auth/refresh)', () => {
+    it('ao receber 401 em rota autenticada, tenta POST /auth/refresh uma vez e repete a requisicao original', async () => {
+      fetchMock
+        .mockResolvedValueOnce(respond(401, { statusCode: 401, message: 'Unauthorized' }))
+        .mockResolvedValueOnce(respond(200, { user: { id: 'u1' } }))
+        .mockResolvedValueOnce(respond(200, { user: { id: 'u1', name: 'Mariana' } }));
+
+      const data = await apiRequest('/auth/me');
+
+      expect(data).toEqual({ user: { id: 'u1', name: 'Mariana' } });
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+      expect(fetchMock.mock.calls[0][0]).toBe('http://api.test/api/auth/me');
+      expect(fetchMock.mock.calls[1][0]).toBe('http://api.test/api/auth/refresh');
+      expect((fetchMock.mock.calls[1][1] as RequestInit).method).toBe('POST');
+      expect((fetchMock.mock.calls[1][1] as RequestInit).credentials).toBe('include');
+      expect(fetchMock.mock.calls[2][0]).toBe('http://api.test/api/auth/me');
+    });
+
+    it('se o refresh falhar (sem cookie ou expirado), devolve o ApiError 401 original sem entrar em loop', async () => {
+      fetchMock
+        .mockResolvedValueOnce(respond(401, { statusCode: 401, message: 'Unauthorized' }))
+        .mockResolvedValueOnce(respond(401, { statusCode: 401, message: 'Refresh expirado' }));
+
+      const error = await failure(apiRequest('/auth/me'));
+
+      expect(error.status).toBe(401);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('se o refresh cair por falha de rede, devolve o ApiError 401 original', async () => {
+      const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+      fetchMock
+        .mockResolvedValueOnce(respond(401, { statusCode: 401, message: 'Unauthorized' }))
+        .mockRejectedValueOnce(new TypeError('Failed to fetch'));
+
+      const error = await failure(apiRequest('/auth/me'));
+
+      expect(error.status).toBe(401);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      warn.mockRestore();
+    });
+
+    it('nao entra em loop infinito se a requisicao repetida apos refresh continuar respondendo 401', async () => {
+      fetchMock
+        .mockResolvedValueOnce(respond(401, { statusCode: 401, message: 'Unauthorized' }))
+        .mockResolvedValueOnce(respond(200, { user: { id: 'u1' } }))
+        .mockResolvedValueOnce(respond(401, { statusCode: 401, message: 'Still unauthorized' }));
+
+      const error = await failure(apiRequest('/usuarios/me/anonymize', { method: 'DELETE' }));
+
+      expect(error.status).toBe(401);
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+    });
+
+    it('deduplica chamadas simultaneas com 401 compartilhando um unico POST /auth/refresh', async () => {
+      let resolveRefresh!: (value: Response) => void;
+      const refreshPromise = new Promise<Response>((resolve) => {
+        resolveRefresh = resolve;
+      });
+
+      fetchMock.mockImplementation((url: string) => {
+        if (url.endsWith('/auth/refresh')) {
+          return refreshPromise;
+        }
+        // As duas primeiras chamadas falham com 401; as repeticoes passam com 200.
+        const previousCallsToUrl = fetchMock.mock.calls.filter(([u]) => u === url).length;
+        if (previousCallsToUrl === 1) {
+          return Promise.resolve(respond(401, { statusCode: 401, message: 'Unauthorized' }));
+        }
+        return Promise.resolve(respond(200, { url }));
+      });
+
+      const first = apiRequest('/auth/me');
+      const second = apiRequest('/catalog/admin');
+
+      await Promise.resolve();
+      resolveRefresh(respond(200, { user: { id: 'u1' } }));
+
+      const [res1, res2] = await Promise.all([first, second]);
+      expect(res1).toEqual({ url: 'http://api.test/api/auth/me' });
+      expect(res2).toEqual({ url: 'http://api.test/api/catalog/admin' });
+
+      const refreshCalls = fetchMock.mock.calls.filter(([u]) =>
+        String(u).endsWith('/auth/refresh'),
+      );
+      expect(refreshCalls).toHaveLength(1);
+    });
+
+    it.each([
+      '/auth/login',
+      '/auth/register',
+      '/auth/refresh',
+      '/auth/logout',
+      '/auth/forgot-password',
+      '/auth/reset-password',
+    ])('nao tenta refresh automatico quando %s responde 401', async (path) => {
+      fetchMock.mockResolvedValueOnce(
+        respond(401, { statusCode: 401, message: 'Credenciais invalidas.' }),
+      );
+
+      const error = await failure(apiRequest(path, { method: 'POST', body: {} }));
+
+      expect(error.status).toBe(401);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+  });
 });

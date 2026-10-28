@@ -11,6 +11,7 @@ import { messages } from '@/content/messages';
 import { registerUser } from '@/lib/api/auth';
 
 import { describeRegisterError } from './register-errors';
+import { useAuth } from './auth-provider';
 import { toRegisterPayload, validateRegister } from './register-validation';
 import type { RegisterErrors, RegisterValues } from './register-validation';
 
@@ -33,6 +34,7 @@ function firstNameOf(fullName: string): string {
  * estado; a pagina so fornece o contorno.
  */
 export function RegisterForm() {
+  const { setUser } = useAuth();
   const [values, setValues] = useState<RegisterValues>(EMPTY);
   const [errors, setErrors] = useState<RegisterErrors>({});
   const [formError, setFormError] = useState<string>();
@@ -97,6 +99,7 @@ export function RegisterForm() {
 
     try {
       const user = await registerUser(toRegisterPayload(values));
+      setUser(user);
       setCreatedName(user.name);
       setStatus('success');
     } catch (error) {
@@ -128,9 +131,17 @@ export function RegisterForm() {
         <Alert variant="success" className="mt-6">
           {texts.success.welcome(firstNameOf(createdName))}
         </Alert>
-        <Link href="/" className={`${buttonStyles({ size: 'lg', fullWidth: true })} mt-8`}>
-          {texts.success.backHome}
-        </Link>
+        <div className="mt-8 flex flex-col gap-3">
+          <Link href="/perfil" className={buttonStyles({ size: 'lg', fullWidth: true })}>
+            {texts.success.goToProfile}
+          </Link>
+          <Link
+            href="/"
+            className={buttonStyles({ variant: 'secondary', size: 'lg', fullWidth: true })}
+          >
+            {texts.success.backHome}
+          </Link>
+        </div>
       </div>
     );
   }
@@ -200,6 +211,16 @@ export function RegisterForm() {
         <Button type="submit" size="lg" fullWidth loading={status === 'submitting'}>
           {texts.submit}
         </Button>
+
+        <p className="text-center text-sm text-ink-muted">
+          {texts.alreadyHaveAccount}{' '}
+          <Link
+            href="/entrar"
+            className="rounded-control font-bold text-ink underline underline-offset-4 hover:text-accent"
+          >
+            {texts.loginLink}
+          </Link>
+        </p>
       </form>
     </div>
   );

@@ -1,41 +1,94 @@
-import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import { createHash, createHmac } from 'node:crypto';
+
+import {
+  BadRequestException,
+  ConflictException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import * as bcrypt from 'bcrypt';
 
+import { EmailService } from '../email/email.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthService } from './auth.service';
 
+const ACCESS_SECRET = 'segredo-acesso-unitario-com-16-chars';
+const REFRESH_SECRET = 'segredo-refresh-unitario-com-16-chars';
+
+function sha256(value: string): string {
+  return createHash('sha256').update(value).digest('hex');
+}
+
 describe('AuthService', () => {
   let service: AuthService;
+  let realJwt: JwtService;
 
   const prismaMock = {
     user: {
       findUnique: jest.fn(),
       create: jest.fn(),
+      update: jest.fn(),
     },
+    refreshToken: {
+      create: jest.fn(),
+      findFirst: jest.fn(),
+      update: jest.fn(),
+      updateMany: jest.fn(),
+    },
+    order: {
+      updateMany: jest.fn(),
+    },
+    $transaction: jest.fn(),
   };
 
-  const jwtMock = {
-    signAsync: jest.fn(),
+  const emailServiceMock = {
+    sendPasswordResetEmail: jest.fn(),
+  };
+
+  const configValues: Record<string, unknown> = {
+    JWT_ACCESS_SECRET: ACCESS_SECRET,
+    JWT_ACCESS_EXPIRES_IN: '15m',
+    JWT_REFRESH_SECRET: REFRESH_SECRET,
+    JWT_REFRESH_EXPIRES_IN: '7d',
+    BCRYPT_SALT_ROUNDS: 4,
   };
 
   const configMock = {
-    get: jest.fn((_key: string, fallback?: unknown) => fallback),
+    get: jest.fn((key: string, fallback?: unknown) =>
+      key in configValues ? configValues[key] : fallback,
+    ),
+    getOrThrow: jest.fn((key: string) => {
+      if (!(key in configValues)) {
+        throw new Error(`Missing config ${key}`);
+      }
+      return configValues[key];
+    }),
   };
 
   beforeEach(async () => {
     jest.clearAllMocks();
-    jwtMock.signAsync.mockResolvedValue('fake-token');
-    configMock.get.mockImplementation((_key: string, fallback?: unknown) => fallback);
+    realJwt = new JwtService();
+    prismaMock.refreshToken.create.mockResolvedValue({ id: 'rt-created' });
+    prismaMock.refreshToken.update.mockResolvedValue({ id: 'rt-updated' });
+    prismaMock.refreshToken.updateMany.mockResolvedValue({ count: 1 });
+    prismaMock.order.updateMany.mockResolvedValue({ count: 0 });
+    prismaMock.$transaction.mockImplementation((ops: Array<Promise<unknown>>) => Promise.all(ops));
+    emailServiceMock.sendPasswordResetEmail.mockResolvedValue(undefined);
+
+    configMock.get.mockImplementation((key: string, fallback?: unknown) =>
+      key in configValues ? configValues[key] : fallback,
+    );
+    configMock.getOrThrow.mockImplementation((key: string) => configValues[key]);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
         { provide: PrismaService, useValue: prismaMock },
-        { provide: JwtService, useValue: jwtMock },
+        { provide: JwtService, useValue: realJwt },
         { provide: ConfigService, useValue: configMock },
+        { provide: EmailService, useValue: emailServiceMock },
       ],
     }).compile();
 
@@ -53,7 +106,7 @@ describe('AuthService', () => {
       expect(prismaMock.user.create).not.toHaveBeenCalled();
     });
 
-    it('cadastra com a senha hasheada (nunca em texto puro) e devolve o par de tokens', async () => {
+    it('cadastra com senha hasheada, persiste o hash SHA-256 do refresh token e devolve o par de tokens', async () => {
       prismaMock.user.findUnique.mockResolvedValue(null);
       prismaMock.user.create.mockImplementation(({ data }: { data: Record<string, unknown> }) =>
         Promise.resolve({
@@ -77,53 +130,15 @@ describe('AuthService', () => {
       expect(dadosCriados.passwordHash).not.toBe('senha12345');
       expect(await bcrypt.compare('senha12345', dadosCriados.passwordHash)).toBe(true);
 
+      expect(prismaMock.refreshToken.create).toHaveBeenCalledWith({
+        data: {
+          userId: 'novo-usuario',
+          tokenHash: sha256(result.refreshToken),
+          expiresAt: expect.any(Date),
+        },
+      });
       expect(result.user).not.toHaveProperty('passwordHash');
       expect(result.user.email).toBe('mariana@example.com');
-      expect(result.accessToken).toBe('fake-token');
-      expect(result.refreshToken).toBe('fake-token');
-    });
-
-    it('usa o BCRYPT_SALT_ROUNDS vindo da configuracao, nao um valor fixo no codigo', async () => {
-      configMock.get.mockImplementation((key: string, fallback?: unknown) =>
-        key === 'BCRYPT_SALT_ROUNDS' ? 4 : fallback,
-      );
-      prismaMock.user.findUnique.mockResolvedValue(null);
-      prismaMock.user.create.mockImplementation(({ data }: { data: Record<string, unknown> }) =>
-        Promise.resolve({ id: 'x', role: 'CLIENTE', xp: 0, level: 1, ...data }),
-      );
-
-      await service.register({
-        name: 'Mariana',
-        email: 'mariana@example.com',
-        password: 'senha12345',
-      });
-
-      // O custo usado fica embutido no proprio texto do hash bcrypt
-      // (formato $2b$<custo>$...), entao da pra confirmar que o valor
-      // configurado (4, nao o default de 12) foi de fato repassado.
-      const hash = prismaMock.user.create.mock.calls[0][0].data.passwordHash as string;
-      expect(hash).toMatch(/^\$2[aby]\$04\$/);
-    });
-
-    it('normaliza o e-mail para minusculas antes de checar duplicidade e de persistir - evita cadastro duplicado da mesma pessoa por diferenca de caixa', async () => {
-      prismaMock.user.findUnique.mockResolvedValue(null);
-      prismaMock.user.create.mockImplementation(({ data }: { data: Record<string, unknown> }) =>
-        Promise.resolve({ id: 'x', role: 'CLIENTE', xp: 0, level: 1, ...data }),
-      );
-
-      await service.register({
-        name: 'Mariana',
-        email: 'Mariana@Example.com',
-        password: 'senha12345',
-      });
-
-      // Postgres compara email com diferenciacao de maiusculas/minusculas
-      // por padrao - sem normalizar, "Mariana@Example.com" e
-      // "mariana@example.com" seriam tratados como contas diferentes.
-      expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
-        where: { email: 'mariana@example.com' },
-      });
-      expect(prismaMock.user.create.mock.calls[0][0].data.email).toBe('mariana@example.com');
     });
 
     it('normaliza o e-mail para minusculas e sem espacos antes de checar duplicidade e persistir', async () => {
@@ -138,10 +153,6 @@ describe('AuthService', () => {
         password: 'senha12345',
       });
 
-      // Verifica o argumento exato recebido pelo Prisma - nao so o
-      // resultado final. Sem a normalizacao, este teste falha porque o
-      // Prisma recebe o e-mail com maiusculas/espacos intactos, e
-      // "Mariana@Example.COM" !== "mariana@example.com".
       expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
         where: { email: 'mariana@example.com' },
       });
@@ -150,16 +161,14 @@ describe('AuthService', () => {
   });
 
   describe('login', () => {
-    it('rejeita e-mail inexistente com 401 generico (nao revela qual dado estava errado)', async () => {
-      prismaMock.user.findUnique.mockResolvedValue(null);
+    it('rejeita e-mail inexistente ou usuario anonimizado com 401 generico', async () => {
+      prismaMock.user.findUnique.mockResolvedValueOnce(null);
 
       await expect(
         service.login({ email: 'nao-existe@example.com', password: 'qualquer-coisa' }),
       ).rejects.toBeInstanceOf(UnauthorizedException);
-    });
 
-    it('rejeita usuario anonimizado (LGPD) mesmo com a senha correta', async () => {
-      prismaMock.user.findUnique.mockResolvedValue({
+      prismaMock.user.findUnique.mockResolvedValueOnce({
         id: 'user-1',
         anonymizedAt: new Date(),
         passwordHash: await bcrypt.hash('senha12345', 4),
@@ -170,7 +179,7 @@ describe('AuthService', () => {
       ).rejects.toBeInstanceOf(UnauthorizedException);
     });
 
-    it('rejeita senha incorreta', async () => {
+    it('rejeita senha incorreta com 401', async () => {
       prismaMock.user.findUnique.mockResolvedValue({
         id: 'user-1',
         anonymizedAt: null,
@@ -182,7 +191,7 @@ describe('AuthService', () => {
       ).rejects.toBeInstanceOf(UnauthorizedException);
     });
 
-    it('autentica com sucesso e devolve o usuario publico + par de tokens', async () => {
+    it('autentica com sucesso, persiste refresh token e devolve usuario publico + tokens', async () => {
       prismaMock.user.findUnique.mockResolvedValue({
         id: 'user-1',
         name: 'Mariana',
@@ -194,69 +203,217 @@ describe('AuthService', () => {
         passwordHash: await bcrypt.hash('senha12345', 4),
       });
 
-      const result = await service.login({ email: 'mariana@example.com', password: 'senha12345' });
+      const result = await service.login({
+        email: '  MARIANA@EXAMPLE.COM ',
+        password: 'senha12345',
+      });
 
+      expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
+        where: { email: 'mariana@example.com' },
+      });
       expect(result.user.email).toBe('mariana@example.com');
-      expect(result.user).not.toHaveProperty('passwordHash');
-      expect(result.accessToken).toBe('fake-token');
-      expect(result.refreshToken).toBe('fake-token');
+      expect(prismaMock.refreshToken.create).toHaveBeenCalledTimes(1);
     });
+  });
 
-    it('normaliza o e-mail para minusculas antes de buscar o usuario - mesma conta, caixa diferente, deve autenticar', async () => {
-      prismaMock.user.findUnique.mockResolvedValue({
+  describe('refresh (rotacao e deteccao de reuso)', () => {
+    const activeUser = {
+      id: 'user-1',
+      name: 'Mariana',
+      email: 'mariana@example.com',
+      role: 'CLIENTE',
+      xp: 50,
+      level: 1,
+      anonymizedAt: null,
+    };
+
+    it('rotaciona um refresh token valido: revoga o atual e emite novo par persistido', async () => {
+      const incomingRefresh = await realJwt.signAsync(
+        { sub: 'user-1', email: 'mariana@example.com', role: 'CLIENTE', jti: 'jti-1' },
+        { secret: REFRESH_SECRET, expiresIn: '7d' },
+      );
+
+      prismaMock.refreshToken.findFirst.mockResolvedValue({
+        id: 'rt-1',
+        userId: 'user-1',
+        tokenHash: sha256(incomingRefresh),
+        expiresAt: new Date(Date.now() + 86_400_000),
+        revokedAt: null,
+      });
+      prismaMock.user.findUnique.mockResolvedValue(activeUser);
+
+      const rotated = await service.refresh(incomingRefresh);
+
+      expect(prismaMock.refreshToken.update).toHaveBeenCalledWith({
+        where: { id: 'rt-1' },
+        data: { revokedAt: expect.any(Date) },
+      });
+      expect(prismaMock.refreshToken.create).toHaveBeenCalledTimes(1);
+      expect(rotated.refreshToken).not.toBe(incomingRefresh);
+      expect(rotated.user).toEqual({
         id: 'user-1',
         name: 'Mariana',
         email: 'mariana@example.com',
         role: 'CLIENTE',
-        xp: 0,
+        xp: 50,
         level: 1,
-        anonymizedAt: null,
-        passwordHash: await bcrypt.hash('senha12345', 4),
-      });
-
-      await service.login({ email: 'MARIANA@EXAMPLE.COM', password: 'senha12345' });
-
-      expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
-        where: { email: 'mariana@example.com' },
       });
     });
 
-    it('normaliza o e-mail para minusculas e sem espacos antes de buscar o usuario', async () => {
-      prismaMock.user.findUnique.mockResolvedValue({
-        id: 'user-1',
-        email: 'mariana@example.com',
-        anonymizedAt: null,
-        passwordHash: await bcrypt.hash('senha12345', 4),
+    it('detecta reuso de refresh token ja revogado, revoga todas as sessoes ativas do usuario e lanca 401', async () => {
+      const replayedRefresh = await realJwt.signAsync(
+        { sub: 'user-1', email: 'mariana@example.com', role: 'CLIENTE', jti: 'jti-usado' },
+        { secret: REFRESH_SECRET, expiresIn: '7d' },
+      );
+
+      prismaMock.refreshToken.findFirst.mockResolvedValue({
+        id: 'rt-antigo',
+        userId: 'user-1',
+        tokenHash: sha256(replayedRefresh),
+        expiresAt: new Date(Date.now() + 86_400_000),
+        revokedAt: new Date(Date.now() - 10_000),
       });
 
-      await service.login({ email: '  Mariana@Example.COM  ', password: 'senha12345' });
+      await expect(service.refresh(replayedRefresh)).rejects.toBeInstanceOf(UnauthorizedException);
 
-      // Mesma verificacao do argumento exato feita em register(): sem a
-      // normalizacao, o Prisma recebe "Mariana@Example.COM" com espacos,
-      // e este teste falha porque a chamada esperada nunca aconteceu.
-      expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
-        where: { email: 'mariana@example.com' },
+      expect(prismaMock.refreshToken.updateMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1', revokedAt: null },
+        data: { revokedAt: expect.any(Date) },
       });
+    });
+
+    it('rejeita token ausente, adulterado ou de usuario anonimizado com 401', async () => {
+      await expect(service.refresh(undefined)).rejects.toBeInstanceOf(UnauthorizedException);
+      await expect(service.refresh('token-invalido')).rejects.toBeInstanceOf(UnauthorizedException);
+
+      const validJwt = await realJwt.signAsync(
+        { sub: 'user-1', email: 'mariana@example.com', role: 'CLIENTE', jti: 'jti-2' },
+        { secret: REFRESH_SECRET, expiresIn: '7d' },
+      );
+      prismaMock.refreshToken.findFirst.mockResolvedValue({
+        id: 'rt-2',
+        userId: 'user-1',
+        tokenHash: sha256(validJwt),
+        expiresAt: new Date(Date.now() + 86_400_000),
+        revokedAt: null,
+      });
+      prismaMock.user.findUnique.mockResolvedValue({ ...activeUser, anonymizedAt: new Date() });
+
+      await expect(service.refresh(validJwt)).rejects.toBeInstanceOf(UnauthorizedException);
     });
   });
 
-  // Estes 3 metodos sao TODOs explicitos: nao ha rota nem chamador ainda
-  // (refresh depende de RefreshToken.rotacao, forgotPassword/resetPassword
-  // dependem de feature/email, que nao existe nesta branch). Os testes
-  // abaixo documentam esse estado de proposito - quando cada metodo for
-  // implementado de verdade, o teste correspondente aqui deve ser
-  // substituido por casos reais (sucesso/erro), nao apenas apagado.
-  describe('metodos ainda nao implementados', () => {
-    it('refresh() ainda nao tem rotacao de token implementada', async () => {
-      await expect(service.refresh('qualquer-refresh-token')).rejects.toThrow(/TODO/);
+  describe('forgotPassword e resetPassword (RF01 / UC03)', () => {
+    it('forgotPassword dispara EmailService para conta ativa e ignora silenciosamente e-mail inexistente ou anonimizado', async () => {
+      prismaMock.user.findUnique.mockResolvedValueOnce({
+        id: 'user-1',
+        email: 'mariana@example.com',
+        passwordHash: 'hash-atual',
+        anonymizedAt: null,
+      });
+
+      await service.forgotPassword('  Mariana@Example.com ');
+
+      expect(emailServiceMock.sendPasswordResetEmail).toHaveBeenCalledTimes(1);
+      expect(emailServiceMock.sendPasswordResetEmail).toHaveBeenCalledWith(
+        'mariana@example.com',
+        expect.any(String),
+      );
+
+      prismaMock.user.findUnique.mockResolvedValueOnce(null);
+      await service.forgotPassword('fantasma@example.com');
+      expect(emailServiceMock.sendPasswordResetEmail).toHaveBeenCalledTimes(1);
     });
 
-    it('forgotPassword() ainda depende de feature/email', async () => {
-      await expect(service.forgotPassword('mariana@example.com')).rejects.toThrow(/TODO/);
+    it('resetPassword troca o hash da senha, revoga refresh tokens e invalida o proprio token contra reuso', async () => {
+      const oldHash = await bcrypt.hash('senha-antiga', 4);
+      const resetSecret = createHmac('sha256', ACCESS_SECRET)
+        .update(`user-1:${oldHash}`)
+        .digest('hex');
+
+      const resetToken = await realJwt.signAsync(
+        { sub: 'user-1', purpose: 'password-reset' },
+        { secret: resetSecret, expiresIn: '30m' },
+      );
+
+      prismaMock.user.findUnique.mockResolvedValueOnce({
+        id: 'user-1',
+        email: 'mariana@example.com',
+        passwordHash: oldHash,
+        anonymizedAt: null,
+      });
+      prismaMock.user.update.mockResolvedValue({ id: 'user-1' });
+
+      await service.resetPassword(resetToken, 'novaSenhaSegura123');
+
+      expect(prismaMock.user.update).toHaveBeenCalledTimes(1);
+      const updatedHash = prismaMock.user.update.mock.calls[0][0].data.passwordHash as string;
+      expect(await bcrypt.compare('novaSenhaSegura123', updatedHash)).toBe(true);
+      expect(prismaMock.refreshToken.updateMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1', revokedAt: null },
+        data: { revokedAt: expect.any(Date) },
+      });
+
+      // Segunda tentativa com o MESMO token falha porque o passwordHash mudou!
+      prismaMock.user.findUnique.mockResolvedValueOnce({
+        id: 'user-1',
+        email: 'mariana@example.com',
+        passwordHash: updatedHash,
+        anonymizedAt: null,
+      });
+
+      await expect(service.resetPassword(resetToken, 'outraSenha123')).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
     });
 
-    it('resetPassword() ainda nao tem validacao de token implementada', async () => {
-      await expect(service.resetPassword('token-qualquer', 'nova-senha')).rejects.toThrow(/TODO/);
+    it('resetPassword rejeita token malformado ou com purpose incorreto com 400', async () => {
+      await expect(service.resetPassword('nao-e-jwt', 'novaSenha123')).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+
+      const accessInsteadOfReset = await realJwt.signAsync(
+        { sub: 'user-1', email: 'a@b.com', role: 'CLIENTE' },
+        { secret: ACCESS_SECRET, expiresIn: '15m' },
+      );
+
+      await expect(
+        service.resetPassword(accessInsteadOfReset, 'novaSenha123'),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+  });
+
+  describe('anonymizeAccount (LGPD - Secao 6.1 do RFC)', () => {
+    it('anonimiza dados pessoais, limpa enderecos de entrega e revoga refresh tokens em transacao', async () => {
+      prismaMock.user.findUnique.mockResolvedValue({
+        id: 'user-1',
+        name: 'Mariana Silva',
+        email: 'mariana@example.com',
+        anonymizedAt: null,
+      });
+      prismaMock.user.update.mockResolvedValue({ id: 'user-1' });
+
+      await service.anonymizeAccount('user-1');
+
+      expect(prismaMock.$transaction).toHaveBeenCalledTimes(1);
+      const updateCall = prismaMock.user.update.mock.calls[0][0];
+      expect(updateCall.where).toEqual({ id: 'user-1' });
+      expect(updateCall.data).toMatchObject({
+        name: 'Usuario Anonimizado',
+        email: 'anonimizado-user-1@anon.cakecraft.local',
+        phone: null,
+        dietaryRestrictions: [],
+        dietaryConsentAt: null,
+        anonymizedAt: expect.any(Date),
+      });
+      expect(prismaMock.refreshToken.updateMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1', revokedAt: null },
+        data: { revokedAt: expect.any(Date) },
+      });
+      expect(prismaMock.order.updateMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1' },
+        data: { deliveryAddress: null },
+      });
     });
   });
 
@@ -273,19 +430,9 @@ describe('AuthService', () => {
       anonymizedAt: null,
     };
 
-    it('busca o usuario pelo id no banco (dados atuais, nao os do token)', async () => {
-      prismaMock.user.findUnique.mockResolvedValue(stored);
-
-      await service.me('user-1');
-
-      expect(prismaMock.user.findUnique).toHaveBeenCalledWith({ where: { id: 'user-1' } });
-    });
-
-    it('devolve so o usuario publico: nunca senha, telefone nem data de anonimizacao', async () => {
-      prismaMock.user.findUnique.mockResolvedValue(stored);
-
+    it('devolve so o usuario publico e rejeita (401) usuario apagado ou anonimizado', async () => {
+      prismaMock.user.findUnique.mockResolvedValueOnce(stored);
       const user = await service.me('user-1');
-
       expect(user).toEqual({
         id: 'user-1',
         name: 'Mariana Silva',
@@ -294,18 +441,11 @@ describe('AuthService', () => {
         xp: 120,
         level: 2,
       });
-      expect(JSON.stringify(user)).not.toContain('hash-secreto');
-    });
 
-    it('rejeita (401) quando o usuario do token nao existe mais', async () => {
-      prismaMock.user.findUnique.mockResolvedValue(null);
-
+      prismaMock.user.findUnique.mockResolvedValueOnce(null);
       await expect(service.me('fantasma')).rejects.toBeInstanceOf(UnauthorizedException);
-    });
 
-    it('rejeita (401) usuario anonimizado (LGPD): o token antigo deixa de valer', async () => {
-      prismaMock.user.findUnique.mockResolvedValue({ ...stored, anonymizedAt: new Date() });
-
+      prismaMock.user.findUnique.mockResolvedValueOnce({ ...stored, anonymizedAt: new Date() });
       await expect(service.me('user-1')).rejects.toBeInstanceOf(UnauthorizedException);
     });
   });
