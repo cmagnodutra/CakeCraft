@@ -12,9 +12,16 @@ const prisma = new PrismaClient();
 
 async function main() {
   const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS ?? 12);
+  const envAdminPassword = process.env.ADMIN_SEED_PASSWORD?.trim();
 
-  // TODO: mover a senha para variavel de ambiente antes de qualquer deploy real.
-  const adminPasswordHash = await bcrypt.hash('troque-esta-senha', saltRounds);
+  if (process.env.NODE_ENV === 'production' && (!envAdminPassword || envAdminPassword.length < 12)) {
+    throw new Error(
+      'ADMIN_SEED_PASSWORD com ao menos 12 caracteres e obrigatoria para executar o seed em producao.',
+    );
+  }
+
+  const rawAdminPassword = envAdminPassword || 'troque-esta-senha';
+  const adminPasswordHash = await bcrypt.hash(rawAdminPassword, saltRounds);
 
   await prisma.user.upsert({
     where: { email: 'admin@cakecraft.com.br' },
