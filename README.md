@@ -49,8 +49,11 @@ precisa do banco. Siga nesta ordem, a partir da raiz do projeto:
 2. **Banco e Redis:** `npm run db:up` (Postgres e Redis no Docker; o Docker
    Desktop precisa estar aberto)
 3. **Variáveis da API:** crie o arquivo `apps/api/.env` a partir do exemplo.
-   Ele é ignorado pelo Git, então **não vem junto do zip nem do clone** e
-   precisa ser criado em cada pasta nova:
+   Ele é ignorado pelo Git e **não vai no clone**. Atenção: zips antigos do
+   projeto traziam, por engano, um `apps/api/.env` de 15/09 com só 6 das 15
+   variáveis. Com ele a API **não sobe** (`"JWT_ACCESS_SECRET" is required`).
+   **Se esse arquivo já existir na sua pasta, substitua-o**: os comandos abaixo
+   sobrescrevem o antigo:
    - PowerShell: `Copy-Item apps/api/.env.example apps/api/.env`
    - macOS/Linux: `cp apps/api/.env.example apps/api/.env`
 
@@ -82,6 +85,7 @@ A mensagem que aparece na tela indica a causa:
 
 | Mensagem | Causa provável | O que fazer |
 | --- | --- | --- |
+| O terminal da API mostra `Config validation error: "JWT_ACCESS_SECRET" is required...` e ela não sobe | O `apps/api/.env` está ausente ou é o antigo, incompleto (de zips antigos) | Recrie-o a partir do exemplo, sobrescrevendo: `Copy-Item apps/api/.env.example apps/api/.env -Force` (PowerShell) ou `cp apps/api/.env.example apps/api/.env` |
 | "Não foi possível conectar ao servidor…" | A API não está acessível | Veja se `npm run dev:api` está rodando e sem erro no terminal (sem `apps/api/.env` ela não sobe); abra `http://localhost:3001/api/health`; abra o site por `localhost`. No navegador, `F12` > Console mostra um aviso `[CakeCraft]` com a URL que falhou |
 | "Algo deu errado do nosso lado…" | A API respondeu com erro interno | Em geral, Docker parado ou tabelas não criadas: `npm run db:up` e `npm run db:migrate`; o terminal da API mostra o erro |
 | "Já existe uma conta com este e-mail." | Está funcionando: o e-mail já foi cadastrado | Use outro e-mail |
