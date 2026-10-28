@@ -3,12 +3,15 @@ import { IngredientType, Role } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import request from 'supertest';
 
+import { CATALOG_ACTIVE_CACHE_KEY } from '../src/catalog/catalog.service';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { RedisService } from '../src/redis/redis.service';
 import { createE2eApp, resetE2eState } from './e2e-app.helper';
 
-describe('Catalog (e2e - PostgreSQL 16 real + RBAC)', () => {
+describe('Catalog (e2e - PostgreSQL 16 + Redis 7 reais + RBAC)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
+  let redis: RedisService;
   let activeIngredientId: string;
   let inactiveIngredientId: string;
 
@@ -16,6 +19,7 @@ describe('Catalog (e2e - PostgreSQL 16 real + RBAC)', () => {
 
   beforeAll(async () => {
     ({ app, prisma } = await createE2eApp());
+    redis = app.get(RedisService);
   });
 
   beforeEach(async () => {
@@ -182,6 +186,59 @@ describe('Catalog (e2e - PostgreSQL 16 real + RBAC)', () => {
       expect(publicCatalog.body).toHaveLength(0);
 
       await admin.delete('/api/catalog/00000000-0000-0000-0000-000000000000').expect(404);
+    });
+
+    it('popula o cache real no Redis 7 em GET /api/catalog e o invalida em POST, PATCH e DELETE', async () => {
+      const admin = await loginAs('admin@cakecraft.com.br');
+
+      expect(await redis.getJson(CATALOG_ACTIVE_CACHE_KEY)).toBeNull();
+
+      const firstPublic = await request(server()).get('/api/catalog').expect(200);
+      expect(firstPublic.body).toHaveLength(1);
+
+      const cachedAfterGet = await redis.getJson<Array<{ id: string; pricePerKg: number }>>(
+        CATALOG_ACTIVE_CACHE_KEY,
+      );
+      expect(cachedAfterGet).toHaveLength(1);
+      expect(cachedAfterGet?.[0]?.id).toBe(activeIngredientId);
+
+      // Mutacao POST invalida o cache no Redis 7.
+      const created = await admin
+        .post('/api/catalog')
+        .send({
+          name: '  Ganache Meio Amargo  ',
+          type: 'COBERTURA',
+          pricePerKg: 54.9,
+          allergens: [' Leite ', 'SOJA', 'leite'],
+        })
+        .expect(201);
+      expect(created.body).toMatchObject({
+        name: 'Ganache Meio Amargo',
+        allergens: ['leite', 'soja'],
+      });
+      expect(await redis.getJson(CATALOG_ACTIVE_CACHE_KEY)).toBeNull();
+
+      // Reaquecendo o cache e validando invalidacao em PATCH.
+      const afterCreatePublic = await request(server()).get('/api/catalog').expect(200);
+      expect(afterCreatePublic.body).toHaveLength(2);
+      expect(await redis.getJson(CATALOG_ACTIVE_CACHE_KEY)).toHaveLength(2);
+
+      await admin
+        .patch(`/api/catalog/${activeIngredientId}`)
+        .send({ pricePerKg: 19.9 })
+        .expect(200);
+      expect(await redis.getJson(CATALOG_ACTIVE_CACHE_KEY)).toBeNull();
+
+      // Reaquecendo o cache e validando invalidacao em DELETE (inativacao logica).
+      await request(server()).get('/api/catalog').expect(200);
+      expect(await redis.getJson(CATALOG_ACTIVE_CACHE_KEY)).toHaveLength(2);
+
+      await admin.delete(`/api/catalog/${activeIngredientId}`).expect(204);
+      expect(await redis.getJson(CATALOG_ACTIVE_CACHE_KEY)).toBeNull();
+
+      const finalPublic = await request(server()).get('/api/catalog').expect(200);
+      expect(finalPublic.body).toHaveLength(1);
+      expect(finalPublic.body[0].name).toBe('Ganache Meio Amargo');
     });
   });
 });

@@ -6,6 +6,7 @@ import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/app.setup';
 import { EMAIL_SENDER_PORT, EmailSenderPort, SendEmailInput } from '../src/email/email-sender.port';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { RedisService } from '../src/redis/redis.service';
 
 export class RecordingEmailSender implements EmailSenderPort {
   readonly sent: SendEmailInput[] = [];
@@ -73,5 +74,6 @@ export async function resetE2eState(
 
   const throttlerStorage = app.get<ThrottlerStorageService>(ThrottlerStorage);
   throttlerStorage.storage.clear();
+  await app.get(RedisService).flushDb();
   emails?.clear();
 }

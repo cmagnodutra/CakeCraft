@@ -48,6 +48,14 @@ export function SiteHeader() {
           <nav aria-label={messages.nav.ariaLabel} className="flex items-center gap-2 sm:gap-3">
             {!isLoading && user ? (
               <>
+                {user.role === 'ADMIN' && (
+                  <Link
+                    href="/admin/catalogo"
+                    className={buttonStyles({ variant: 'ghost', size: 'md' })}
+                  >
+                    {messages.nav.adminCatalog}
+                  </Link>
+                )}
                 <Link href="/perfil" className={buttonStyles({ variant: 'ghost', size: 'md' })}>
                   {messages.nav.profile}
                 </Link>
