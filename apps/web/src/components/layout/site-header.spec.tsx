@@ -68,6 +68,9 @@ describe('SiteHeader', () => {
     const profileLink = await screen.findByRole('link', { name: messages.nav.profile });
     expect(profileLink).toHaveAttribute('href', '/perfil');
     expect(screen.queryByRole('link', { name: messages.nav.login })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: messages.nav.adminCatalog }),
+    ).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: messages.nav.logout }));
 
@@ -75,5 +78,25 @@ describe('SiteHeader', () => {
       expect(screen.getByRole('link', { name: messages.nav.login })).toBeInTheDocument(),
     );
     expect(logoutUserMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('administrador autenticado ve tambem o atalho para /admin/catalogo (UC05)', async () => {
+    fetchCurrentUserMock.mockResolvedValue({
+      id: 'admin-1',
+      name: 'Juliana Admin',
+      email: 'admin@cakecraft.com.br',
+      role: 'ADMIN',
+      xp: 0,
+      level: 1,
+    });
+
+    render(
+      <AuthProvider>
+        <SiteHeader />
+      </AuthProvider>,
+    );
+
+    const adminLink = await screen.findByRole('link', { name: messages.nav.adminCatalog });
+    expect(adminLink).toHaveAttribute('href', '/admin/catalogo');
   });
 });
