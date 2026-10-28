@@ -1,8 +1,20 @@
-import { IsArray, IsBoolean, IsEnum, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import {
+  IsArray,
+  IsBoolean,
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+  MinLength,
+} from 'class-validator';
 import { IngredientType } from '@prisma/client';
 
 export class CreateIngredientDto {
   @IsString()
+  @IsNotEmpty()
+  @MinLength(2)
   name!: string;
 
   @IsEnum(IngredientType)

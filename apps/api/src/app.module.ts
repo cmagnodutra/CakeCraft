@@ -10,6 +10,7 @@ import { EmailModule } from './email/email.module';
 import { HealthModule } from './health/health.module';
 import { PricingModule } from './pricing/pricing.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { RedisModule } from './redis/redis.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { PrismaModule } from './prisma/prisma.module';
       }),
     }),
     PrismaModule,
+    RedisModule,
     HealthModule,
     AuthModule,
     PricingModule,
