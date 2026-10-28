@@ -10,6 +10,22 @@ interface RequestOptions {
 }
 
 /**
+ * Rotas de credenciais onde um 401 significa falha de credencial (ou do
+ * proprio refresh), e NAO um access_token expirado que mereca tentativa de
+ * renovacao silenciosa.
+ */
+const NO_REFRESH_PATHS = new Set([
+  'auth/login',
+  'auth/register',
+  'auth/refresh',
+  'auth/logout',
+  'auth/forgot-password',
+  'auth/reset-password',
+]);
+
+let refreshInFlight: Promise<boolean> | null = null;
+
+/**
  * Unico ponto do frontend que fala com a API.
  *
  * - credentials: 'include' SEMPRE: a autenticacao e por cookie httpOnly
@@ -18,6 +34,9 @@ interface RequestOptions {
  *   o login "funciona" mas a requisicao seguinte chega sem sessao.
  * - Nao ha header Authorization nem token em localStorage (decisao do
  *   projeto: cookie httpOnly protege contra XSS).
+ * - Renovacao silenciosa: quando uma rota autenticada responde 401, tenta
+ *   uma unica chamada compartilhada a POST /auth/refresh e repete a requisicao
+ *   original caso a sessao seja renovada.
  * - Erros viram ApiError (o servidor respondeu) ou NetworkError (nao houve
  *   resposta); a tela decide o texto em pt-BR.
  */
@@ -26,24 +45,29 @@ export async function apiRequest<T = unknown>(
   { method = 'GET', body }: RequestOptions = {},
 ): Promise<T> {
   // Valida a configuracao antes de qualquer rede.
-  const url = `${getApiBaseUrl()}/${path.replace(/^\/+/, '')}`;
+  const baseUrl = getApiBaseUrl();
+  const normalizedPath = path.replace(/^\/+/, '');
+  const url = `${baseUrl}/${normalizedPath}`;
 
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (body !== undefined) {
     headers['Content-Type'] = 'application/json';
   }
 
-  let response: Response;
-  try {
-    response = await fetch(url, {
-      method,
-      headers,
-      credentials: 'include',
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
-  } catch {
-    warnNetworkFailure(url);
-    throw new NetworkError();
+  const init: RequestInit = {
+    method,
+    headers,
+    credentials: 'include',
+    body: body === undefined ? undefined : JSON.stringify(body),
+  };
+
+  let response = await performFetch(url, init);
+
+  if (response.status === 401 && !NO_REFRESH_PATHS.has(normalizedPath)) {
+    const refreshed = await tryRefreshSession(baseUrl);
+    if (refreshed) {
+      response = await performFetch(url, init);
+    }
   }
 
   if (!response.ok) {
@@ -60,6 +84,41 @@ export async function apiRequest<T = unknown>(
     // Status de sucesso com corpo ilegivel: nao devolver lixo como se fosse dado.
     throw new ApiError(response.status, []);
   }
+}
+
+async function performFetch(url: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch {
+    warnNetworkFailure(url);
+    throw new NetworkError();
+  }
+}
+
+/**
+ * Compartilha uma unica chamada de renovacao entre requisicoes concorrentes
+ * que receberam 401 ao mesmo tempo, evitando que a segunda apresente um
+ * refresh_token recem-rotacionado e acione a deteccao de reuso da API.
+ */
+async function tryRefreshSession(baseUrl: string): Promise<boolean> {
+  if (!refreshInFlight) {
+    const refreshUrl = `${baseUrl}/auth/refresh`;
+    refreshInFlight = fetch(refreshUrl, {
+      method: 'POST',
+      headers: { Accept: 'application/json' },
+      credentials: 'include',
+    })
+      .then((response) => response.ok)
+      .catch(() => {
+        warnNetworkFailure(refreshUrl);
+        return false;
+      })
+      .finally(() => {
+        refreshInFlight = null;
+      });
+  }
+
+  return refreshInFlight;
 }
 
 /** Le o corpo de um erro sem nunca lancar: o corpo pode nao ser JSON (ex.: HTML de proxy). */

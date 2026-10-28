@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 
 import { SiteHeader } from '@/components/layout/site-header';
 import { messages } from '@/content/messages';
+import { AuthProvider } from '@/features/auth/auth-provider';
 
 import './globals.css';
 
@@ -38,8 +39,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="pt-BR" className={`${serif.variable} ${sans.variable}`}>
       <body>
-        <SiteHeader />
-        <main id="conteudo">{children}</main>
+        <AuthProvider>
+          <SiteHeader />
+          <main id="conteudo">{children}</main>
+        </AuthProvider>
       </body>
     </html>
   );

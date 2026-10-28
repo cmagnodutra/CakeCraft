@@ -1,6 +1,14 @@
-import { registerUser } from './auth';
+import {
+  anonymizeMyAccount,
+  fetchCurrentUser,
+  loginUser,
+  logoutUser,
+  registerUser,
+  requestPasswordReset,
+  resetPassword,
+} from './auth';
 import { apiRequest } from './client';
-import { ApiError } from './errors';
+import { ApiError, NetworkError } from './errors';
 
 jest.mock('./client');
 
@@ -11,7 +19,7 @@ const user = {
   name: 'Mariana Silva',
   email: 'mariana@example.com',
   role: 'CLIENTE' as const,
-  xp: 0,
+  xp: 250,
   level: 1,
 };
 
@@ -54,5 +62,90 @@ describe('registerUser', () => {
     await expect(
       registerUser({ name: 'Mariana', email: 'm@e.com', password: 'senha12345' }),
     ).rejects.toBe(conflict);
+  });
+});
+
+describe('loginUser', () => {
+  it('faz POST em /auth/login com email e password e devolve o usuario', async () => {
+    apiRequestMock.mockResolvedValue({ user });
+
+    const result = await loginUser({
+      email: 'mariana@example.com',
+      password: 'senha12345',
+    });
+
+    expect(apiRequestMock).toHaveBeenCalledWith('/auth/login', {
+      method: 'POST',
+      body: { email: 'mariana@example.com', password: 'senha12345' },
+    });
+    expect(result).toEqual(user);
+  });
+});
+
+describe('fetchCurrentUser', () => {
+  it('devolve o usuario autenticado quando GET /auth/me responde 200', async () => {
+    apiRequestMock.mockResolvedValue({ user });
+
+    await expect(fetchCurrentUser()).resolves.toEqual(user);
+    expect(apiRequestMock).toHaveBeenCalledWith('/auth/me');
+  });
+
+  it('devolve null quando GET /auth/me responde 401 (visitante sem sessao)', async () => {
+    apiRequestMock.mockRejectedValue(new ApiError(401, ['Unauthorized']));
+
+    await expect(fetchCurrentUser()).resolves.toBeNull();
+  });
+
+  it('propaga falhas de rede ou erro 5xx para quem chamou decidir', async () => {
+    const networkError = new NetworkError();
+    apiRequestMock.mockRejectedValue(networkError);
+
+    await expect(fetchCurrentUser()).rejects.toBe(networkError);
+  });
+});
+
+describe('logoutUser', () => {
+  it('faz POST em /auth/logout sem corpo', async () => {
+    apiRequestMock.mockResolvedValue(undefined);
+
+    await expect(logoutUser()).resolves.toBeUndefined();
+    expect(apiRequestMock).toHaveBeenCalledWith('/auth/logout', { method: 'POST' });
+  });
+});
+
+describe('requestPasswordReset', () => {
+  it('faz POST em /auth/forgot-password com o e-mail', async () => {
+    apiRequestMock.mockResolvedValue({ message: 'ok' });
+
+    await expect(requestPasswordReset('mariana@example.com')).resolves.toBeUndefined();
+    expect(apiRequestMock).toHaveBeenCalledWith('/auth/forgot-password', {
+      method: 'POST',
+      body: { email: 'mariana@example.com' },
+    });
+  });
+});
+
+describe('resetPassword', () => {
+  it('faz POST em /auth/reset-password com token e newPassword', async () => {
+    apiRequestMock.mockResolvedValue(undefined);
+
+    await expect(
+      resetPassword({ token: 'jwt-token', newPassword: 'NovaSenha123!' }),
+    ).resolves.toBeUndefined();
+    expect(apiRequestMock).toHaveBeenCalledWith('/auth/reset-password', {
+      method: 'POST',
+      body: { token: 'jwt-token', newPassword: 'NovaSenha123!' },
+    });
+  });
+});
+
+describe('anonymizeMyAccount', () => {
+  it('faz DELETE em /usuarios/me/anonymize conforme Secao 6.1 do RFC (LGPD)', async () => {
+    apiRequestMock.mockResolvedValue(undefined);
+
+    await expect(anonymizeMyAccount()).resolves.toBeUndefined();
+    expect(apiRequestMock).toHaveBeenCalledWith('/usuarios/me/anonymize', {
+      method: 'DELETE',
+    });
   });
 });

@@ -1,14 +1,31 @@
+'use client';
+
 import Link from 'next/link';
+import { useState } from 'react';
 
 import { Wordmark } from '@/components/brand/wordmark';
+import { Button, buttonStyles } from '@/components/ui/button';
 import { messages } from '@/content/messages';
+import { useAuth } from '@/features/auth/auth-provider';
 
 /**
- * Cabecalho global. Por enquanto so tem a marca: os links de navegacao
- * (Montar bolo, Entrar) entram junto com as rotas que eles abrem, para
- * nunca existir um link que leva a lugar nenhum.
+ * Cabecalho global com navegacao sincronizada a sessao em memoria.
+ * Regra de ouro do projeto: apenas links para rotas que JA existem e
+ * funcionam ponta a ponta (/entrar, /cadastro e /perfil).
  */
 export function SiteHeader() {
+  const { user, isLoading, logout } = useAuth();
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  async function handleLogout() {
+    setLoggingOut(true);
+    try {
+      await logout();
+    } finally {
+      setLoggingOut(false);
+    }
+  }
+
   return (
     <>
       {/* Primeiro elemento focavel: quem navega por teclado pula o cabecalho. */}
@@ -19,7 +36,7 @@ export function SiteHeader() {
         {messages.a11y.skipToContent}
       </a>
       <header className="border-b border-line">
-        <div className="mx-auto flex h-16 w-full max-w-6xl items-center px-5 sm:px-8">
+        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-5 sm:px-8">
           {/*
             aria-label explicito: a marca e feita de dois <span> e, sem ele,
             alguns leitores de tela leem "Cake craft" (duas palavras).
@@ -27,6 +44,35 @@ export function SiteHeader() {
           <Link href="/" aria-label={messages.brand.name} className="rounded-control">
             <Wordmark />
           </Link>
+
+          <nav aria-label={messages.nav.ariaLabel} className="flex items-center gap-2 sm:gap-3">
+            {!isLoading && user ? (
+              <>
+                <Link href="/perfil" className={buttonStyles({ variant: 'ghost', size: 'md' })}>
+                  {messages.nav.profile}
+                </Link>
+                <Button
+                  variant="secondary"
+                  size="md"
+                  loading={loggingOut}
+                  onClick={() => {
+                    void handleLogout();
+                  }}
+                >
+                  {messages.nav.logout}
+                </Button>
+              </>
+            ) : !isLoading ? (
+              <>
+                <Link href="/entrar" className={buttonStyles({ variant: 'ghost', size: 'md' })}>
+                  {messages.nav.login}
+                </Link>
+                <Link href="/cadastro" className={buttonStyles({ variant: 'primary', size: 'md' })}>
+                  {messages.nav.register}
+                </Link>
+              </>
+            ) : null}
+          </nav>
         </div>
       </header>
     </>

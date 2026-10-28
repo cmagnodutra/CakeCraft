@@ -1,6 +1,21 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+
+import { messages } from '@/content/messages';
+import { AuthProvider } from '@/features/auth/auth-provider';
+import { fetchCurrentUser, logoutUser } from '@/lib/api/auth';
 
 import { SiteHeader } from './site-header';
+
+jest.mock('@/lib/api/auth');
+
+const fetchCurrentUserMock = jest.mocked(fetchCurrentUser);
+const logoutUserMock = jest.mocked(logoutUser);
+
+beforeEach(() => {
+  fetchCurrentUserMock.mockReset();
+  logoutUserMock.mockReset();
+});
 
 describe('SiteHeader', () => {
   it('a marca e um link para a pagina inicial', () => {
@@ -25,10 +40,40 @@ describe('SiteHeader', () => {
     expect(links[0]).toHaveAccessibleName('Pular para o conteúdo');
   });
 
-  it('nao tem links para rotas que ainda nao existem (nada de botao que nao funciona)', () => {
+  it('visitante deslogado ve apenas links para rotas existentes (/entrar e /cadastro)', () => {
     render(<SiteHeader />);
 
     const destinos = screen.getAllByRole('link').map((link) => link.getAttribute('href'));
-    expect(destinos).toEqual(['#conteudo', '/']);
+    expect(destinos).toEqual(['#conteudo', '/', '/entrar', '/cadastro']);
+  });
+
+  it('usuario autenticado ve link para /perfil e botao Sair que encerra a sessao', async () => {
+    fetchCurrentUserMock.mockResolvedValue({
+      id: 'u1',
+      name: 'Mariana Silva',
+      email: 'mariana@example.com',
+      role: 'CLIENTE',
+      xp: 0,
+      level: 1,
+    });
+    logoutUserMock.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+
+    render(
+      <AuthProvider>
+        <SiteHeader />
+      </AuthProvider>,
+    );
+
+    const profileLink = await screen.findByRole('link', { name: messages.nav.profile });
+    expect(profileLink).toHaveAttribute('href', '/perfil');
+    expect(screen.queryByRole('link', { name: messages.nav.login })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: messages.nav.logout }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('link', { name: messages.nav.login })).toBeInTheDocument(),
+    );
+    expect(logoutUserMock).toHaveBeenCalledTimes(1);
   });
 });
