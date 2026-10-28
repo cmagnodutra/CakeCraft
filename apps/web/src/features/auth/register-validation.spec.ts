@@ -61,6 +61,39 @@ describe('validateRegister', () => {
     it('nao apara espacos da senha: eles fazem parte dela', () => {
       expect(validateRegister({ ...valid, password: '       a' })).not.toHaveProperty('password');
     });
+
+    it('aceita senha com ate 72 bytes UTF-8 (1, 2, 3 e 4 bytes por ponto de codigo)', () => {
+      expect(validateRegister({ ...valid, password: 'a'.repeat(72) })).not.toHaveProperty(
+        'password',
+      );
+      expect(validateRegister({ ...valid, password: 'á'.repeat(36) })).not.toHaveProperty(
+        'password',
+      );
+      expect(validateRegister({ ...valid, password: '\u20ac'.repeat(24) })).not.toHaveProperty(
+        'password',
+      );
+      expect(validateRegister({ ...valid, password: '\u{1F382}'.repeat(18) })).not.toHaveProperty(
+        'password',
+      );
+    });
+
+    it('rejeita senha acima de 72 bytes UTF-8 (73 ASCII, 37 de 2 bytes, 25 de 3 bytes ou 19 de 4 bytes)', () => {
+      const expectedMessage =
+        'A senha não pode passar de 72 bytes (cerca de 72 caracteres sem acento).';
+
+      expect(validateRegister({ ...valid, password: 'a'.repeat(73) }).password).toBe(
+        expectedMessage,
+      );
+      expect(validateRegister({ ...valid, password: 'á'.repeat(37) }).password).toBe(
+        expectedMessage,
+      );
+      expect(validateRegister({ ...valid, password: '\u20ac'.repeat(25) }).password).toBe(
+        expectedMessage,
+      );
+      expect(validateRegister({ ...valid, password: '\u{1F382}'.repeat(19) }).password).toBe(
+        expectedMessage,
+      );
+    });
   });
 
   describe('telefone (opcional; com DDD, 10 ou 11 digitos)', () => {

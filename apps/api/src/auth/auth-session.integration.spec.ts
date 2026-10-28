@@ -246,4 +246,54 @@ describe('Sessao (integracao HTTP)', () => {
       await request(server()).get('/api/auth/logout').expect(404);
     });
   });
+
+  describe('limite de 72 bytes UTF-8 da senha (truncamento silencioso do bcrypt)', () => {
+    it('aceita senha com exatamente 72 bytes ASCII no cadastro e no login', async () => {
+      const password72 = 'a'.repeat(72);
+
+      await request(server())
+        .post('/api/auth/register')
+        .send({ name: 'Mariana', email: 'limite72@example.com', password: password72 })
+        .expect(201);
+
+      await request(server())
+        .post('/api/auth/login')
+        .send({ email: 'limite72@example.com', password: password72 })
+        .expect(200);
+    });
+
+    it('rejeita senha com 73 bytes ASCII (400) no cadastro e no login', async () => {
+      const password73 = 'a'.repeat(73);
+
+      await request(server())
+        .post('/api/auth/register')
+        .send({ name: 'Mariana', email: 'limite73@example.com', password: password73 })
+        .expect(400);
+
+      await request(server())
+        .post('/api/auth/login')
+        .send({ email: 'limite73@example.com', password: password73 })
+        .expect(400);
+    });
+
+    it('conta bytes UTF-8 reais e nao caracteres: rejeita 37 letras acentuadas (74 bytes UTF-8)', async () => {
+      const accented72Bytes = '\u00e1'.repeat(36);
+      const accented74Bytes = '\u00e1'.repeat(37);
+
+      await request(server())
+        .post('/api/auth/register')
+        .send({ name: 'Mariana', email: 'acento72@example.com', password: accented72Bytes })
+        .expect(201);
+
+      await request(server())
+        .post('/api/auth/register')
+        .send({ name: 'Mariana', email: 'acento74@example.com', password: accented74Bytes })
+        .expect(400);
+
+      await request(server())
+        .post('/api/auth/login')
+        .send({ email: 'acento72@example.com', password: accented74Bytes })
+        .expect(400);
+    });
+  });
 });

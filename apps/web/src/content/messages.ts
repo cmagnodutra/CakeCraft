@@ -43,6 +43,7 @@ export const messages = {
         name: 'Informe seu nome, com pelo menos 2 letras.',
         email: 'Informe um e-mail válido.',
         password: 'A senha precisa ter pelo menos 8 caracteres.',
+        passwordMax: 'A senha não pode passar de 72 bytes (cerca de 72 caracteres sem acento).',
         phone: 'Informe o telefone com DDD, por exemplo (47) 99999-9999.',
       },
       // Erros vindos da API. A API responde em ingles e sem acento, entao o
