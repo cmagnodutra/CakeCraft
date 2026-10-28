@@ -31,7 +31,7 @@ export class CakeLayerInputDto {
   @IsString({ each: true })
   fillingIngredientIds!: string[];
 
-  @IsNumber()
+  @IsNumber({ maxDecimalPlaces: 3 })
   @IsPositive()
   estimatedWeightKg!: number;
 }

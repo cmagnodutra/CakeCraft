@@ -1,113 +1,79 @@
-import { INestApplication, ValidationPipe } from '@nestjs/common';
-import { Test, TestingModule } from '@nestjs/testing';
+import { INestApplication } from '@nestjs/common';
+import { IngredientType } from '@prisma/client';
 import request from 'supertest';
 
-import { AppModule } from '../src/app.module';
-import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { createE2eApp, resetE2eState } from './e2e-app.helper';
 
-interface FakeIngredient {
-  id: string;
-  name: string;
-  type: string;
-  pricePerKg: number;
-  active: boolean;
-  isAerated: boolean;
-  allergens: string[];
-}
-
-/**
- * Catalogo de ingredientes fake, pre-populado com o suficiente para
- * exercitar RN01 (integridade estrutural) e RN02 (calculo volumetrico)
- * via HTTP real, sem depender de um Postgres de verdade. A logica
- * isolada ja e coberta por pricing.service.spec.ts; este arquivo cobre a
- * integracao da pilha HTTP (routing + ValidationPipe, inclusive a
- * validacao aninhada de floors[] via class-transformer).
- */
-class FakeIngredientStore {
-  ingredients: FakeIngredient[] = [
-    {
-      id: 'massa-pao-de-lo',
-      name: 'Pao de Lo',
-      type: 'MASSA',
-      pricePerKg: 20,
-      active: true,
-      isAerated: true,
-      allergens: ['gluten'],
-    },
-    {
-      id: 'massa-chocolate',
-      name: 'Massa de Chocolate',
-      type: 'MASSA',
-      pricePerKg: 30,
-      active: true,
-      isAerated: false,
-      allergens: ['gluten'],
-    },
-    {
-      id: 'cobertura-chantilly',
-      name: 'Chantilly',
-      type: 'COBERTURA',
-      pricePerKg: 15,
-      active: true,
-      isAerated: false,
-      allergens: ['lactose'],
-    },
-    {
-      id: 'recheio-brigadeiro',
-      name: 'Brigadeiro',
-      type: 'RECHEIO',
-      pricePerKg: 25,
-      active: true,
-      isAerated: false,
-      allergens: [],
-    },
-    {
-      id: 'ingrediente-inativo',
-      name: 'Descontinuado',
-      type: 'RECHEIO',
-      pricePerKg: 10,
-      active: false,
-      isAerated: false,
-      allergens: [],
-    },
-  ];
-
-  ingredient = {
-    findMany: ({
-      where,
-    }: {
-      where: { id: { in: string[] }; active: boolean };
-    }): Promise<FakeIngredient[]> => {
-      const ids = new Set(where.id.in);
-      return Promise.resolve(
-        this.ingredients.filter(
-          (ingredient) => ids.has(ingredient.id) && ingredient.active === where.active,
-        ),
-      );
-    },
-  };
-}
-
-describe('Pricing (e2e)', () => {
+describe('Pricing (e2e - PostgreSQL 16 real)', () => {
   let app: INestApplication;
-  const fakePrisma = new FakeIngredientStore();
+  let prisma: PrismaService;
+  let aeratedDoughId: string;
+  let chocolateDoughId: string;
+  let chantillyCoverageId: string;
+  let brigadeiroFillingId: string;
+  let inactiveFillingId: string;
+
+  const server = () => app.getHttpServer() as Parameters<typeof request>[0];
 
   beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    })
-      .overrideProvider(PrismaService)
-      .useValue(fakePrisma)
-      .compile();
+    ({ app, prisma } = await createE2eApp());
+  });
 
-    app = moduleFixture.createNestApplication();
-    app.setGlobalPrefix('api');
-    app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
-    );
-    app.useGlobalFilters(new AllExceptionsFilter());
-    await app.init();
+  beforeEach(async () => {
+    await resetE2eState(app, prisma);
+
+    const [paoDeLo, chocolate, chantilly, brigadeiro, inativo] = await prisma.$transaction([
+      prisma.ingredient.create({
+        data: {
+          name: 'Pao de Lo',
+          type: IngredientType.MASSA,
+          pricePerKg: '10.00',
+          isAerated: true,
+          allergens: ['gluten'],
+        },
+      }),
+      prisma.ingredient.create({
+        data: {
+          name: 'Massa de Chocolate',
+          type: IngredientType.MASSA,
+          pricePerKg: '30.00',
+          isAerated: false,
+          allergens: ['gluten'],
+        },
+      }),
+      prisma.ingredient.create({
+        data: {
+          name: 'Chantilly',
+          type: IngredientType.COBERTURA,
+          pricePerKg: '7.00',
+          isAerated: false,
+          allergens: ['lactose'],
+        },
+      }),
+      prisma.ingredient.create({
+        data: {
+          name: 'Brigadeiro',
+          type: IngredientType.RECHEIO,
+          pricePerKg: '25.00',
+          isAerated: false,
+        },
+      }),
+      prisma.ingredient.create({
+        data: {
+          name: 'Descontinuado',
+          type: IngredientType.RECHEIO,
+          pricePerKg: '10.00',
+          active: false,
+        },
+      }),
+    ]);
+
+    aeratedDoughId = paoDeLo.id;
+    chocolateDoughId = chocolate.id;
+    chantillyCoverageId = chantilly.id;
+    brigadeiroFillingId = brigadeiro.id;
+    inactiveFillingId = inativo.id;
   });
 
   afterAll(async () => {
@@ -116,81 +82,113 @@ describe('Pricing (e2e)', () => {
 
   const nonAeratedFloor = (floorNumber = 1) => ({
     floorNumber,
-    doughIngredientId: 'massa-chocolate',
-    coverageIngredientId: 'cobertura-chantilly',
-    fillingIngredientIds: ['recheio-brigadeiro'],
+    doughIngredientId: chocolateDoughId,
+    coverageIngredientId: chantillyCoverageId,
+    fillingIngredientIds: [brigadeiroFillingId],
     estimatedWeightKg: 1,
   });
 
-  const aeratedFloor = (floorNumber: number) => ({
+  const aeratedFloor = (floorNumber: number, estimatedWeightKg = 1) => ({
     floorNumber,
-    doughIngredientId: 'massa-pao-de-lo',
-    coverageIngredientId: 'cobertura-chantilly',
+    doughIngredientId: aeratedDoughId,
+    coverageIngredientId: chantillyCoverageId,
     fillingIngredientIds: [] as string[],
-    estimatedWeightKg: 1,
+    estimatedWeightKg,
   });
 
   describe('POST /api/pricing/calculate', () => {
-    it('calcula RN02 corretamente para um bolo de 1 andar (soma preco/kg x peso + taxa base)', async () => {
-      const response = await request(app.getHttpServer())
+    it('calcula RN02 a partir de colunas Decimal(10,2) reais do PostgreSQL', async () => {
+      const response = await request(server())
         .post('/api/pricing/calculate')
-        .send({ floors: [nonAeratedFloor()] });
+        .send({ floors: [nonAeratedFloor()] })
+        .expect(200);
 
-      expect(response.status).toBeLessThan(300);
-      // 30 (massa) + 15 (cobertura) + 25 (recheio) = 70/kg * 1kg = 70 + taxa base (25) = 95
-      expect(response.body.layers[0].subtotal).toBe(70);
+      // 30 (massa) + 7 (cobertura) + 25 (recheio) = 62/kg * 1kg = 62 + taxa base (25) = 87
+      expect(response.body.layers[0].subtotal).toBe(62);
       expect(response.body.assemblyBaseFee).toBe(25);
-      expect(response.body.totalPrice).toBe(95);
+      expect(response.body.totalPrice).toBe(87);
     });
 
-    it('RN01 - permite massa aerada em exatamente 2 andares (fronteira permitida)', async () => {
-      const response = await request(app.getHttpServer())
+    it('preserva precisao exata em centavos com Decimal do banco (17.00 x 1.005 = 17.09)', async () => {
+      const response = await request(server())
         .post('/api/pricing/calculate')
-        .send({ floors: [aeratedFloor(1), aeratedFloor(2)] });
+        .send({ floors: [aeratedFloor(1, 1.005)] })
+        .expect(200);
 
-      expect(response.status).toBeLessThan(300);
-      expect(response.body.layers).toHaveLength(2);
+      // 10.00 (Pao de Lo) + 7.00 (Chantilly) = 17.00 * 1.005 kg = 17.085 -> 17.09
+      expect(response.body.layers[0].subtotal).toBe(17.09);
+      expect(response.body.totalPrice).toBe(42.09);
     });
 
-    it('RN01 - bloqueia massa aerada em 3 andares com 422 (fronteira bloqueada)', async () => {
-      await request(app.getHttpServer())
+    it('RN01 - permite massa aerada em 2 andares (200) e bloqueia em 3 andares (422)', async () => {
+      const allowed = await request(server())
+        .post('/api/pricing/calculate')
+        .send({ floors: [aeratedFloor(1), aeratedFloor(2)] })
+        .expect(200);
+
+      expect(allowed.body.layers).toHaveLength(2);
+
+      await request(server())
         .post('/api/pricing/calculate')
         .send({ floors: [aeratedFloor(1), aeratedFloor(2), aeratedFloor(3)] })
         .expect(422);
     });
 
-    it('rejeita ingrediente inexistente com 422', async () => {
-      await request(app.getHttpServer())
+    it('rejeita insumo de tipo incorreto no slot (ex.: RECHEIO usado como MASSA) com 422', async () => {
+      await request(server())
         .post('/api/pricing/calculate')
         .send({
-          floors: [{ ...nonAeratedFloor(), doughIngredientId: 'ingrediente-que-nao-existe' }],
+          floors: [{ ...nonAeratedFloor(), doughIngredientId: brigadeiroFillingId }],
         })
         .expect(422);
     });
 
-    it('rejeita ingrediente inativo com 422 (mesmo existindo no catalogo)', async () => {
-      await request(app.getHttpServer())
+    it('rejeita recheio duplicado no mesmo andar com 422', async () => {
+      await request(server())
         .post('/api/pricing/calculate')
-        .send({ floors: [{ ...nonAeratedFloor(), doughIngredientId: 'ingrediente-inativo' }] })
+        .send({
+          floors: [
+            {
+              ...nonAeratedFloor(),
+              fillingIngredientIds: [brigadeiroFillingId, brigadeiroFillingId],
+            },
+          ],
+        })
         .expect(422);
     });
 
-    it('rejeita corpo sem nenhum andar (floors vazio) com 400', async () => {
-      await request(app.getHttpServer())
+    it('rejeita ingrediente inexistente ou inativo com 422', async () => {
+      await request(server())
         .post('/api/pricing/calculate')
-        .send({ floors: [] })
-        .expect(400);
+        .send({
+          floors: [
+            { ...nonAeratedFloor(), doughIngredientId: '00000000-0000-0000-0000-000000000000' },
+          ],
+        })
+        .expect(422);
+
+      await request(server())
+        .post('/api/pricing/calculate')
+        .send({
+          floors: [{ ...nonAeratedFloor(), fillingIngredientIds: [inactiveFillingId] }],
+        })
+        .expect(422);
     });
 
-    it('rejeita peso negativo dentro de um andar com 400 (validacao aninhada)', async () => {
-      await request(app.getHttpServer())
+    it('rejeita payloads malformados (floors vazio, peso negativo, > 3 decimais ou > 2 recheios) com 400', async () => {
+      await request(server()).post('/api/pricing/calculate').send({ floors: [] }).expect(400);
+
+      await request(server())
         .post('/api/pricing/calculate')
         .send({ floors: [{ ...nonAeratedFloor(), estimatedWeightKg: -1 }] })
         .expect(400);
-    });
 
-    it('rejeita mais de 2 recheios por andar com 400 (ArrayMaxSize)', async () => {
-      await request(app.getHttpServer())
+      await request(server())
+        .post('/api/pricing/calculate')
+        .send({ floors: [{ ...nonAeratedFloor(), estimatedWeightKg: 1.1234 }] })
+        .expect(400);
+
+      await request(server())
         .post('/api/pricing/calculate')
         .send({
           floors: [{ ...nonAeratedFloor(), fillingIngredientIds: ['a', 'b', 'c'] }],

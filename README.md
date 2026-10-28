@@ -107,8 +107,9 @@ A mensagem que aparece na tela indica a causa:
 | `npm run db:migrate` / `npm run db:seed` | Cria as tabelas / popula ingredientes e administrador |
 | `npm run dev:api` / `npm run dev:web` | Sobe a API (porta 3001) / o frontend (porta 3000) |
 | `npm run test:api` / `npm run test:web` | Testes unitários de cada app |
-| `npm run test:e2e:api` | Testes e2e da API (exigem o Docker de pé) |
-| `npm run lint:web` | ESLint do frontend |
+| `npm run test:cov:api` / `npm run test:cov:web` | Cobertura de testes (pisos: >= 75% API, >= 25% Web) |
+| `npm run test:e2e:api` | Testes e2e da API contra PostgreSQL 16 real (`schema=e2e_test`) |
+| `npm run lint:api` / `npm run lint:web` | ESLint da API e do frontend |
 | `npm run audit:prod` | Vulnerabilidades em dependências de produção (deve ser 0) |
 
 O frontend lê a URL da API de `NEXT_PUBLIC_API_URL` (veja `apps/web/.env.example`).

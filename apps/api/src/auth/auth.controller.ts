@@ -1,5 +1,6 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Post, Res, UseGuards } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -20,6 +21,13 @@ const REFRESH_TOKEN_COOKIE_PATH = '/api/auth/refresh';
 const ACCESS_TOKEN_COOKIE = 'access_token';
 const REFRESH_TOKEN_COOKIE = 'refresh_token';
 
+/**
+ * Limite estrito contra ataques de forca bruta e abuso de criacao de contas
+ * (RNF05 e Secao 6 do RFC): 10 tentativas por minuto por IP.
+ */
+export const AUTH_THROTTLE_TTL_MS = 60_000;
+export const AUTH_THROTTLE_LIMIT = 10;
+
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -29,6 +37,7 @@ export class AuthController {
 
   /** UC03, passo 2 - RF01. */
   @Post('register')
+  @Throttle({ default: { ttl: AUTH_THROTTLE_TTL_MS, limit: AUTH_THROTTLE_LIMIT } })
   @HttpCode(HttpStatus.CREATED)
   async register(
     @Body() dto: RegisterDto,
@@ -41,6 +50,7 @@ export class AuthController {
 
   /** UC03, passo 3 - RF01. */
   @Post('login')
+  @Throttle({ default: { ttl: AUTH_THROTTLE_TTL_MS, limit: AUTH_THROTTLE_LIMIT } })
   @HttpCode(HttpStatus.OK)
   async login(
     @Body() dto: LoginDto,

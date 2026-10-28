@@ -135,14 +135,13 @@ o Postgres; quem cobre o banco sao os testes e2e da API.
    `feature/auth-session` (contrato em `docs/CONTRATO-SESSAO.md`). Consequencia
    que a tela de login precisa tratar: a sessao dura 15 minutos, porque nao ha
    rota de refresh (item 4).
-2. **Senhas longas e bcrypt.** O bcrypt so usa os primeiros 72 bytes: duas
-   senhas com o mesmo comeco de 72 caracteres sao aceitas como iguais
-   (verificado em teste manual) e o `RegisterDto`/`LoginDto` nao tem limite
-   maximo. Sugestao: rejeitar com 400 senha acima de 72 bytes (bytes, nao
-   caracteres: acentos ocupam mais de um byte).
-3. **Sem rate limiting (RNF05 do RFC).** Nao ha limite de tentativas em
-   nenhuma rota, entao cadastro e login estao expostos a forca bruta. O
-   frontend ja trata o 429 com mensagem propria para quando existir.
+2. **Senhas longas e bcrypt: FEITO** na branch `fix/backend-hardening`.
+   `RegisterDto` e `LoginDto` rejeitam com 400 senhas acima de 72 bytes UTF-8
+   (`@MaxByteLength(72)`), e `validateRegister` espelha a regra no frontend.
+3. **Rate limiting (RNF05 do RFC): FEITO** na branch `fix/backend-hardening`.
+   `@nestjs/throttler` configurado via `APP_GUARD` (60 req/min global por IP,
+   10 req/min em `/api/auth/login` e `/api/auth/register`, `/api/health`
+   isenta).
 4. **Sem rota de refresh** (`AuthService.refresh` e TODO). O access token
    expira em 15 minutos e hoje nao ha como renova-lo.
 

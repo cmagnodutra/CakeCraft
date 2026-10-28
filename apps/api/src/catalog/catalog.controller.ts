@@ -8,19 +8,22 @@ import {
   Param,
   Patch,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 
+import { Roles } from '../common/decorators/roles.decorator';
+import { Role } from '../common/enums/role.enum';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../common/guards/roles.guard';
 import { CatalogService } from './catalog.service';
 import { CreateIngredientDto } from './dto/create-ingredient.dto';
 import { UpdateIngredientDto } from './dto/update-ingredient.dto';
 
 /**
- * TODO (fecha quando feature/auth for mergeada): proteger as rotas abaixo
- * de POST/PATCH/DELETE e GET /admin com @UseGuards(JwtAuthGuard,
- * RolesGuard) + @Roles(Role.ADMIN). Hoje estao publicas de proposito -
- * catalog e auth foram construidas em paralelo, em branches
- * independentes, e o RBAC depende de infraestrutura que so existe em
- * feature/auth (JwtAuthGuard, RolesGuard, decorator @Roles, enum Role).
+ * Endpoints do catalogo de insumos (RF02 / UC05).
+ * Apenas GET /api/catalog permanece publica para abastecer o Cake Builder;
+ * listagem completa (ativos + inativos) e mutacoes exigem papel ADMIN
+ * (Secao 6 do RFC - prevencao de Broken Access Control).
  */
 @Controller('catalog')
 export class CatalogController {
@@ -32,26 +35,31 @@ export class CatalogController {
     return this.catalogService.findAllActive();
   }
 
-  /** TODO: restringir a ADMIN quando o RBAC estiver disponivel. */
+  /** Lista todos os ingredientes (ativos e inativos) para o painel ADMIN. */
   @Get('admin')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   findAllForAdmin() {
     return this.catalogService.findAllForAdmin();
   }
 
-  /** TODO: restringir a ADMIN quando o RBAC estiver disponivel. */
   @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   create(@Body() dto: CreateIngredientDto) {
     return this.catalogService.create(dto);
   }
 
-  /** TODO: restringir a ADMIN quando o RBAC estiver disponivel. */
   @Patch(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   update(@Param('id') id: string, @Body() dto: UpdateIngredientDto) {
     return this.catalogService.update(id, dto);
   }
 
-  /** TODO: restringir a ADMIN quando o RBAC estiver disponivel. */
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   deactivate(@Param('id') id: string) {
     return this.catalogService.deactivate(id);

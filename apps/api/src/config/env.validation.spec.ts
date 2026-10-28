@@ -28,6 +28,8 @@ describe('envValidationSchema', () => {
     expect(value.JWT_REFRESH_EXPIRES_IN).toBe('7d');
     expect(value.BCRYPT_SALT_ROUNDS).toBe(12);
     expect(value.SMTP_PORT).toBe(587);
+    expect(value.THROTTLE_TTL_MS).toBe(60000);
+    expect(value.THROTTLE_LIMIT).toBe(60);
   });
 
   it('rejeita a ausencia de SMTP_HOST', () => {
