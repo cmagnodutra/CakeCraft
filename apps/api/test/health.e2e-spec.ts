@@ -1,23 +1,14 @@
-import { INestApplication, ValidationPipe } from '@nestjs/common';
-import { Test, TestingModule } from '@nestjs/testing';
+import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 
-import { AppModule } from '../src/app.module';
-import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter';
+import { createE2eApp } from './e2e-app.helper';
 
-describe('Health (e2e)', () => {
+describe('Health (e2e - PostgreSQL real)', () => {
   let app: INestApplication;
+  const server = () => app.getHttpServer() as Parameters<typeof request>[0];
 
   beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
-    app.setGlobalPrefix('api');
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
-    app.useGlobalFilters(new AllExceptionsFilter());
-    await app.init();
+    ({ app } = await createE2eApp());
   });
 
   afterAll(async () => {
@@ -25,14 +16,14 @@ describe('Health (e2e)', () => {
   });
 
   it('GET /api/health responde 200 com o status do servico', async () => {
-    const response = await request(app.getHttpServer()).get('/api/health').expect(200);
+    const response = await request(server()).get('/api/health').expect(200);
 
     expect(response.body.status).toBe('ok');
     expect(response.body.service).toBe('cakecraft-api');
   });
 
-  it('GET em rota inexistente responde 404 no formato de erro padronizado', async () => {
-    const response = await request(app.getHttpServer()).get('/api/rota-inexistente').expect(404);
+  it('GET em rota inexistente responde 404 no formato de erro padronizado pelo AllExceptionsFilter', async () => {
+    const response = await request(server()).get('/api/rota-inexistente').expect(404);
 
     expect(response.body).toMatchObject({
       statusCode: 404,

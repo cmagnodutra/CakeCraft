@@ -1,17 +1,22 @@
+import { resolveE2eDatabaseUrl } from './e2e-env';
+
 /**
- * Variaveis minimas para os testes e2e subirem a aplicacao completa.
- * Usa os mesmos valores do docker-compose de desenvolvimento, e respeita
- * variaveis ja definidas no ambiente (que e como o CI injeta as suas).
+ * Variaveis de ambiente da suite E2E.
+ * Sobrescreve DATABASE_URL com o schema `e2e_test` do PostgreSQL 16 real antes
+ * que o ConfigModule seja carregado pelo AppModule, e reduz BCRYPT_SALT_ROUNDS
+ * para o minimo permitido pelo schema Joi (10) para manter a suite rapida.
  */
 process.env.NODE_ENV = 'test';
-process.env.DATABASE_URL =
-  process.env.DATABASE_URL ??
-  'postgresql://cakecraft:cakecraft@localhost:5432/cakecraft?schema=public';
+process.env.DATABASE_URL = resolveE2eDatabaseUrl();
 process.env.REDIS_URL = process.env.REDIS_URL ?? 'redis://localhost:6379';
+process.env.CORS_ORIGIN = 'http://localhost:3000';
 process.env.JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET ?? 'segredo-de-teste-e2e-com-16-mais';
 process.env.JWT_REFRESH_SECRET =
   process.env.JWT_REFRESH_SECRET ?? 'outro-segredo-de-teste-e2e-longo';
+process.env.BCRYPT_SALT_ROUNDS = '10';
 process.env.SMTP_HOST = process.env.SMTP_HOST ?? 'smtp-relay.brevo.com';
 process.env.SMTP_USER = process.env.SMTP_USER ?? 'usuario-smtp-de-teste';
 process.env.SMTP_PASSWORD = process.env.SMTP_PASSWORD ?? 'chave-smtp-de-teste';
 process.env.SMTP_FROM = process.env.SMTP_FROM ?? 'CakeCraft <no-reply@cakecraft.dev>';
+process.env.THROTTLE_TTL_MS = '60000';
+process.env.THROTTLE_LIMIT = '120';

@@ -1,4 +1,4 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 
 import { CalculatePriceDto } from './dto/calculate-price.dto';
 import { PriceCalculationResult, PricingService } from './pricing.service';
@@ -16,6 +16,7 @@ export class PricingController {
   constructor(private readonly pricingService: PricingService) {}
 
   @Post('calculate')
+  @HttpCode(HttpStatus.OK)
   calculate(@Body() dto: CalculatePriceDto): Promise<PriceCalculationResult> {
     return this.pricingService.calculate(dto);
   }
