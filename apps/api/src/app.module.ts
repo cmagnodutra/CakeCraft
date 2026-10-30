@@ -8,9 +8,12 @@ import { CatalogModule } from './catalog/catalog.module';
 import { AppEnvironment, envValidationSchema } from './config/env.validation';
 import { EmailModule } from './email/email.module';
 import { HealthModule } from './health/health.module';
+import { OrdersModule } from './orders/orders.module';
+import { PaymentsModule } from './payments/payments.module';
 import { PricingModule } from './pricing/pricing.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
+import { UploadsModule } from './uploads/uploads.module';
 
 @Module({
   imports: [
@@ -39,6 +42,9 @@ import { RedisModule } from './redis/redis.module';
     PricingModule,
     CatalogModule,
     EmailModule,
+    UploadsModule,
+    PaymentsModule,
+    OrdersModule,
   ],
   providers: [
     {

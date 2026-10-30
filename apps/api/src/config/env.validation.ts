@@ -53,6 +53,23 @@ export const envValidationSchema = Joi.object({
   /** RNF05 - janela e teto global de requisicoes por IP no ThrottlerGuard. */
   THROTTLE_TTL_MS: Joi.number().integer().min(1000).default(60000),
   THROTTLE_LIMIT: Joi.number().integer().min(1).default(60),
+
+  /** RF07 / RN03 - integracao PIX com Asaas (Sandbox por padrao em dev/test). */
+  ASAAS_API_URL: Joi.string().uri().default('https://api-sandbox.asaas.com/v3'),
+  ASAAS_API_KEY: Joi.when('NODE_ENV', {
+    is: 'production',
+    then: Joi.string().min(16).invalid('sandbox-asaas-local-dev').required(),
+    otherwise: Joi.string().min(8).default('sandbox-asaas-local-dev'),
+  }),
+  ASAAS_WEBHOOK_TOKEN: Joi.when('NODE_ENV', {
+    is: 'production',
+    then: Joi.string().min(16).invalid('token-webhook-asaas-local-dev').required(),
+    otherwise: Joi.string().min(16).default('token-webhook-asaas-local-dev'),
+  }),
+  ASAAS_DEFAULT_CPF_CNPJ: Joi.string().pattern(/^\d{11,14}$/).default('24971563792'),
+
+  /** RF05 - diretorio local seguro para uploads de papel de arroz. */
+  UPLOAD_DIR: Joi.string().default('uploads'),
 })
   // Reporta todos os problemas de configuracao de uma vez, em vez de fazer
   // o desenvolvedor descobrir um por vez a cada tentativa de boot.
@@ -77,4 +94,9 @@ export interface AppEnvironment {
   SMTP_FROM: string;
   THROTTLE_TTL_MS: number;
   THROTTLE_LIMIT: number;
+  ASAAS_API_URL: string;
+  ASAAS_API_KEY: string;
+  ASAAS_WEBHOOK_TOKEN: string;
+  ASAAS_DEFAULT_CPF_CNPJ: string;
+  UPLOAD_DIR: string;
 }
