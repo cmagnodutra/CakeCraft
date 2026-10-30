@@ -176,6 +176,36 @@ bloqueante com sugestao de substituto compativel da mesma categoria e impede o
 envio ate a correcao. O backend (`PricingService` e `OrdersService`) revalida
 ambas as regras de forma independente.
 
+## 9. Kanban em tempo real (`/admin/producao`), WebSockets com cookie `httpOnly` e Relatorios (`/admin/relatorios`)
+
+**Socket.io autenticado por cookie `httpOnly` (`subscribeToOrderUpdates`).** Para
+cumprir `RF08` e `UC04` sem expor o JWT ao JavaScript (mantendo zero tokens em
+`localStorage`), o cliente `socket.io-client` conecta ao namespace `/ws/orders`
+com `withCredentials: true`. O navegador anexa o cookie `access_token`
+automaticamente no handshake HTTP/WebSocket, e o `KanbanGateway` valida a
+assinatura JWT e inscreve a conexao nas salas `user:<id>` (clientes) e
+`kitchen:admins` (confeiteiros `ADMIN`). Tanto `/admin/producao` quanto
+`/meus-pedidos` reagem ao evento `order.updated`, atualizando cartoes, status e
+saldo de XP/Nivel em tempo real sem F5.
+
+**Quadro Kanban operacional e acessivel (`KitchenKanbanView`).** Em vez de
+depender exclusivamente de drag-and-drop com mouse (inacessivel via teclado e
+propenso a toques acidentais em tablets na cozinha com maos enfarinhadas), cada
+cartao do quadro de quatro colunas (`EM_ESPERA`, `EM_PRODUCAO`, `FINALIZACAO`,
+`PRONTO`, com baixa final para `ENTREGUE`) oferece botoes explicitos de `>= 44px`
+para mover entre as etapas permitidas da maquina de estados
+(`PATCH /api/kanban/orders/:id/status`) ou cancelar com estorno em `EM_ESPERA`,
+exibindo ficha tecnica completa (formato, andares, HEX, alergenicos, mensagem de
+topo, arte em papel de arroz e gramaturas por insumo).
+
+**Relatorios financeiros e exportacao CSV segura (`AdminReportsView`).** A tela
+`/admin/relatorios` (`UC06` / `RF10`) consulta `GET /api/reports/financial` com
+filtro `from` e `to`, apresenta indicadores consolidados (faturamento liquido
+confirmado, pedidos concluidos e ticket medio calculados em centavos inteiros no
+servidor) e aciona `GET /api/reports/financial/csv` via `Blob` +
+`URL.createObjectURL`, preservando a autenticacao por cookie `httpOnly` e o BOM
+UTF-8 (`;`) compativel com Excel/LibreOffice em `pt-BR`.
+
 ## Decisoes de design ja tomadas (valem para as proximas branches)
 
 - **Tipografia:** serifa elegante nos titulos + sans limpa no corpo,

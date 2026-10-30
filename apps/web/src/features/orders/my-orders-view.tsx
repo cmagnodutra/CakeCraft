@@ -16,6 +16,7 @@ import {
   resolveApiAssetUrl,
 } from '@/lib/api/orders';
 import type { CustomerOrder, OrderStatus } from '@/lib/api/orders';
+import { subscribeToOrderUpdates } from '@/lib/realtime/orders-socket';
 
 const texts = messages.myOrders;
 
@@ -36,6 +37,7 @@ const timeFormatter = new Intl.DateTimeFormat('pt-BR', {
 function statusBadgeStyle(status: OrderStatus): string {
   switch (status) {
     case 'PRONTO':
+    case 'ENTREGUE':
       return 'border-success-line bg-success-soft text-success';
     case 'CANCELADO':
       return 'border-danger-line bg-danger-soft text-danger';
@@ -51,7 +53,7 @@ function toQrImageSrc(qrCode: string): string {
 }
 
 export function MyOrdersView() {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, refreshUser } = useAuth();
   const searchParams = useSearchParams();
   const newlyCreatedOrderId = searchParams.get('novo');
 
@@ -60,10 +62,11 @@ export function MyOrdersView() {
   const [errorBanner, setErrorBanner] = useState<string>();
   const [feedbackBanner, setFeedbackBanner] = useState<string>();
 
-  const ordersLoading = Boolean(user) && orders === null && !errorBanner;
+  const userId = user?.id;
+  const ordersLoading = Boolean(userId) && orders === null && !errorBanner;
 
   useEffect(() => {
-    if (authLoading || !user) {
+    if (authLoading || !userId) {
       return;
     }
 
@@ -84,10 +87,25 @@ export function MyOrdersView() {
         }
       });
 
+    const unsubscribe = subscribeToOrderUpdates((event) => {
+      fetchMyOrders()
+        .then((loaded) => {
+          if (active) {
+            setOrders(loaded);
+          }
+        })
+        .catch(() => undefined);
+
+      if (event.status === 'PRONTO' || event.status === 'ENTREGUE') {
+        void refreshUser();
+      }
+    });
+
     return () => {
       active = false;
+      unsubscribe();
     };
-  }, [authLoading, user]);
+  }, [authLoading, userId, refreshUser]);
 
   if (authLoading) {
     return (

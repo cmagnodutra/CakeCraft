@@ -23,7 +23,9 @@ export const messages = {
     myOrders: 'Meus pedidos',
     login: 'Entrar',
     register: 'Criar conta',
+    adminKanban: 'Produção',
     adminCatalog: 'Catálogo',
+    adminReports: 'Relatórios',
     profile: 'Minha conta',
     logout: 'Sair',
   },
@@ -415,6 +417,7 @@ export const messages = {
       EM_PRODUCAO: 'Em preparo na cozinha',
       FINALIZACAO: 'Em acabamento e confeitaria',
       PRONTO: 'Pronto para retirada / entrega',
+      ENTREGUE: 'Entregue / retirado',
       CANCELADO: 'Cancelado',
     },
     paymentStatus: {
@@ -443,6 +446,102 @@ export const messages = {
       loadFailed: 'Não foi possível carregar seus pedidos. Tente novamente.',
       actionFailed: 'Não foi possível concluir a operação neste pedido. Tente novamente.',
       copyFailed: 'Não foi possível copiar automaticamente. Copie o código exibido no campo.',
+      network: 'Não foi possível conectar ao servidor. Verifique sua conexão e tente de novo.',
+    },
+  },
+  adminKanban: {
+    title: 'Quadro de produção da cozinha',
+    subtitle:
+      'Fila em tempo real de pedidos pagos (RN03), com alertas de restrições alimentares, arte de papel de arroz e conclusão com disparo de XP (UC04 / UC02).',
+    loadingMessage: 'Carregando fila de produção da cozinha...',
+    unauthenticatedTitle: 'Acesso restrito à cozinha',
+    unauthenticatedBody:
+      'Entre com uma conta administrativa para acompanhar e movimentar o Kanban de produção.',
+    forbiddenTitle: 'Permissão insuficiente',
+    forbiddenBody: 'Esta área é exclusiva para a equipe administrativa da confeitaria.',
+    goToLogin: 'Entrar',
+    backHome: 'Voltar ao início',
+    liveBadge: 'Sincronizado em tempo real',
+    refreshButton: 'Atualizar fila',
+    columns: {
+      EM_ESPERA: 'Em espera',
+      EM_PRODUCAO: 'Em produção',
+      FINALIZACAO: 'Finalização',
+      PRONTO: 'Pronto',
+    },
+    emptyColumn: 'Nenhum pedido nesta etapa.',
+    cardTitle: (shortId: string) => `#${shortId}`,
+    customerPrefix: 'Cliente:',
+    dietaryAlertPrefix: 'Atenção alergênicos:',
+    toppingPrefix: 'Topo:',
+    deliveryPrefix: 'Entrega:',
+    ricePaperLink: 'Ver arte papel de arroz',
+    layerLine: (floor: number, weightKg: string, dough: string, fillings: string, cov: string) =>
+      `${floor}º andar (${weightKg} kg): ${dough} · ${fillings} · ${cov}`,
+    actions: {
+      startProduction: 'Iniciar preparo',
+      backToWaiting: 'Voltar à espera',
+      moveToFinishing: 'Enviar para finalização',
+      backToProduction: 'Voltar ao preparo',
+      markReady: 'Marcar como pronto',
+      confirmDelivered: 'Confirmar entrega',
+      cancelAndRefund: 'Cancelar e estornar',
+    },
+    feedback: {
+      moved: (shortId: string, columnLabel: string) =>
+        `Pedido #${shortId} movido para "${columnLabel}".`,
+      markedReady: (shortId: string) =>
+        `Pedido #${shortId} marcado como pronto! Cliente notificado e pontos de XP creditados.`,
+      delivered: (shortId: string) =>
+        `Entrega do pedido #${shortId} registrada com sucesso.`,
+      cancelled: (shortId: string) =>
+        `Pedido #${shortId} cancelado com solicitação de estorno PIX.`,
+    },
+    errors: {
+      loadFailed: 'Não foi possível carregar o quadro de produção.',
+      transitionFailed: 'Não foi possível atualizar a etapa deste pedido.',
+      network: 'Não foi possível conectar ao servidor. Verifique sua conexão e tente de novo.',
+    },
+  },
+  adminReports: {
+    title: 'Relatórios financeiros',
+    subtitle:
+      'Fechamento financeiro por período com receita confirmada via PIX, total de pedidos pagos, ticket médio e exportação CSV em 1 clique (UC06 / RF10).',
+    loadingMessage: 'Calculando indicadores financeiros...',
+    unauthenticatedTitle: 'Acesso restrito à gestão',
+    unauthenticatedBody:
+      'Entre com uma conta administrativa para consultar os relatórios financeiros da confeitaria.',
+    forbiddenTitle: 'Permissão insuficiente',
+    forbiddenBody: 'Esta área é exclusiva para administradores da confeitaria.',
+    goToLogin: 'Entrar',
+    backHome: 'Voltar ao início',
+    filterForm: {
+      fromLabel: 'Data inicial',
+      toLabel: 'Data final',
+      applyButton: 'Aplicar período',
+      exportCsvButton: 'Exportar CSV',
+    },
+    kpis: {
+      totalRevenue: 'Receita confirmada (PIX)',
+      paidOrders: 'Pedidos pagos no período',
+      averageTicket: 'Ticket médio',
+    },
+    table: {
+      heading: 'Pedidos liquidados no período',
+      empty: 'Nenhum pedido pago encontrado no intervalo selecionado.',
+      colOrder: 'Pedido',
+      colPaidAt: 'Pago em',
+      colCustomer: 'Cliente',
+      colStatus: 'Status atual',
+      colFormat: 'Configuração',
+      colAmount: 'Valor',
+    },
+    feedback: {
+      csvExported: 'Relatório CSV gerado e baixado com sucesso.',
+    },
+    errors: {
+      loadFailed: 'Não foi possível carregar o relatório financeiro. Verifique o intervalo de datas.',
+      exportFailed: 'Não foi possível exportar o arquivo CSV agora. Tente novamente.',
       network: 'Não foi possível conectar ao servidor. Verifique sua conexão e tente de novo.',
     },
   },
