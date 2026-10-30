@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: 'CakeCraft Dashboards'
+    orgId: 1
+    folder: 'CakeCraft'
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards

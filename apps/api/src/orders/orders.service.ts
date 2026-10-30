@@ -14,6 +14,7 @@ import { CakeFormat, Ingredient, OrderStatus, PaymentStatus, Prisma } from '@pri
 import { Role } from '../common/enums/role.enum';
 import { AuthenticatedUser } from '../common/types/authenticated-request';
 import { EmailService } from '../email/email.service';
+import { MetricsService } from '../metrics/metrics.service';
 import { PIX_GATEWAY_PORT, PixGatewayPort } from '../payments/pix-gateway.port';
 import { CakeLayerInputDto } from '../pricing/dto/calculate-price.dto';
 import { PricingService } from '../pricing/pricing.service';
@@ -121,6 +122,7 @@ export class OrdersService {
     @Inject(PIX_GATEWAY_PORT) private readonly pixGateway: PixGatewayPort,
     @Optional() private readonly redis?: RedisService,
     @Optional() private readonly emailService?: EmailService,
+    @Optional() private readonly metricsService?: MetricsService,
   ) {}
 
   /**
@@ -209,6 +211,8 @@ export class OrdersService {
         include: ORDER_INCLUDE,
       });
     });
+
+    this.metricsService?.recordOrderCreated();
 
     return serializeOrder(created);
   }

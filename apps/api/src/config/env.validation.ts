@@ -70,6 +70,9 @@ export const envValidationSchema = Joi.object({
 
   /** RF05 - diretorio local seguro para uploads de papel de arroz. */
   UPLOAD_DIR: Joi.string().default('uploads'),
+
+  /** Observabilidade Prometheus (/api/metrics) - token Bearer opcional para scraping externo. */
+  METRICS_TOKEN: Joi.string().min(16).optional(),
 })
   // Reporta todos os problemas de configuracao de uma vez, em vez de fazer
   // o desenvolvedor descobrir um por vez a cada tentativa de boot.
@@ -99,4 +102,5 @@ export interface AppEnvironment {
   ASAAS_WEBHOOK_TOKEN: string;
   ASAAS_DEFAULT_CPF_CNPJ: string;
   UPLOAD_DIR: string;
+  METRICS_TOKEN?: string;
 }

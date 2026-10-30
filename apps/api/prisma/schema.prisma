@@ -1,13 +1,11 @@
-// Schema de dados do CakeCraft.
-// Traduz as entidades citadas ao longo do RFC-001 (a Secao 5.2 "Modelo de
-// Dados" do RFC ficou sem o diagrama original) para o Prisma.
-//
-// Cobre nesta primeira versao: identidade e acesso (User, RefreshToken),
-// catalogo de ingredientes (Ingredient) e o pedido com sua configuracao de
-// bolo (Order, CakeConfiguration, CakeLayer, CakeLayerFilling, OrderItem),
-// alem de Payment e XpTransaction para as regras RN03/RN04. As regras de
-// negocio em si (RN01-RN04) NAO estao implementadas aqui - isso e trabalho
-// das proximas branches (pricing, payments, gamification).
+// Schema relacional do CakeCraft (PostgreSQL 16 + Prisma ORM).
+// Modela as entidades do RFC-001 (Secao 5.2): identidade e sessao (User,
+// RefreshToken), catalogo de insumos (Ingredient), pedido e estrutura
+// modular do bolo com snapshots historicos de preco (Order, CakeConfiguration,
+// CakeLayer, CakeLayerFilling, OrderItem), pagamento PIX Asaas (Payment) e
+// auditoria de fidelidade (XpTransaction). As regras RN01-RN04 sao impostas
+// na camada de dominio (PricingService, PaymentsService, KanbanService e
+// GamificationService) sob transacoes ACID (RNF06).
 
 generator client {
   provider = "prisma-client-js"
