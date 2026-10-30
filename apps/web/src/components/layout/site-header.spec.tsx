@@ -73,7 +73,13 @@ describe('SiteHeader', () => {
     );
     expect(screen.queryByRole('link', { name: messages.nav.login })).not.toBeInTheDocument();
     expect(
+      screen.queryByRole('link', { name: messages.nav.adminKanban }),
+    ).not.toBeInTheDocument();
+    expect(
       screen.queryByRole('link', { name: messages.nav.adminCatalog }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: messages.nav.adminReports }),
     ).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: messages.nav.logout }));
@@ -84,7 +90,7 @@ describe('SiteHeader', () => {
     expect(logoutUserMock).toHaveBeenCalledTimes(1);
   });
 
-  it('administrador autenticado ve tambem o atalho para /admin/catalogo (UC05)', async () => {
+  it('administrador autenticado ve atalhos para /admin/producao (UC04), /admin/catalogo (UC05) e /admin/relatorios (UC06)', async () => {
     fetchCurrentUserMock.mockResolvedValue({
       id: 'admin-1',
       name: 'Juliana Admin',
@@ -100,7 +106,15 @@ describe('SiteHeader', () => {
       </AuthProvider>,
     );
 
-    const adminLink = await screen.findByRole('link', { name: messages.nav.adminCatalog });
-    expect(adminLink).toHaveAttribute('href', '/admin/catalogo');
+    const kanbanLink = await screen.findByRole('link', { name: messages.nav.adminKanban });
+    expect(kanbanLink).toHaveAttribute('href', '/admin/producao');
+    expect(screen.getByRole('link', { name: messages.nav.adminCatalog })).toHaveAttribute(
+      'href',
+      '/admin/catalogo',
+    );
+    expect(screen.getByRole('link', { name: messages.nav.adminReports })).toHaveAttribute(
+      'href',
+      '/admin/relatorios',
+    );
   });
 });

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { messages } from '@/content/messages';
@@ -11,10 +11,13 @@ import {
   regenerateOrderPix,
 } from '@/lib/api/orders';
 import type { CustomerOrder } from '@/lib/api/orders';
+import { subscribeToOrderUpdates } from '@/lib/realtime/orders-socket';
+import type { OrderRealtimeEvent } from '@/lib/realtime/orders-socket';
 
 import { MyOrdersView } from './my-orders-view';
 
 let mockNovoParam: string | null = null;
+let realtimeListener: ((event: OrderRealtimeEvent) => void) | null = null;
 
 jest.mock('next/navigation', () => ({
   useSearchParams: () => ({
@@ -23,6 +26,14 @@ jest.mock('next/navigation', () => ({
 }));
 
 jest.mock('@/lib/api/auth');
+jest.mock('@/lib/realtime/orders-socket', () => ({
+  subscribeToOrderUpdates: jest.fn((cb: (event: OrderRealtimeEvent) => void) => {
+    realtimeListener = cb;
+    return () => {
+      realtimeListener = null;
+    };
+  }),
+}));
 jest.mock('@/lib/api/orders', () => {
   const actual = jest.requireActual<typeof import('@/lib/api/orders')>('@/lib/api/orders');
   return {
@@ -37,6 +48,7 @@ const fetchCurrentUserMock = jest.mocked(fetchCurrentUser);
 const fetchMyOrdersMock = jest.mocked(fetchMyOrders);
 const cancelOrderMock = jest.mocked(cancelOrder);
 const regenerateOrderPixMock = jest.mocked(regenerateOrderPix);
+const subscribeToOrderUpdatesMock = jest.mocked(subscribeToOrderUpdates);
 
 const authenticatedCustomer = {
   id: 'u1',
@@ -93,10 +105,12 @@ function makeSampleOrder(overrides: Partial<CustomerOrder> = {}): CustomerOrder 
 
 beforeEach(() => {
   mockNovoParam = null;
+  realtimeListener = null;
   fetchCurrentUserMock.mockReset();
   fetchMyOrdersMock.mockReset();
   cancelOrderMock.mockReset();
   regenerateOrderPixMock.mockReset();
+  subscribeToOrderUpdatesMock.mockClear();
 });
 
 describe('MyOrdersView (/meus-pedidos)', () => {
@@ -243,5 +257,39 @@ describe('MyOrdersView (/meus-pedidos)', () => {
     );
 
     expect(await screen.findByText(messages.myOrders.errors.network)).toBeInTheDocument();
+  });
+
+  it('atualiza o status em tempo real via Socket.io e sincroniza XP quando o pedido fica PRONTO (RF08/UC02)', async () => {
+    const producingOrder = makeSampleOrder({ status: 'EM_PRODUCAO', payment: null });
+    const readyOrder = makeSampleOrder({ status: 'PRONTO', payment: null });
+
+    fetchCurrentUserMock
+      .mockResolvedValueOnce(authenticatedCustomer)
+      .mockResolvedValueOnce({ ...authenticatedCustomer, xp: 430, level: 1 });
+    fetchMyOrdersMock
+      .mockResolvedValueOnce([producingOrder])
+      .mockResolvedValue([readyOrder]);
+
+    render(
+      <AuthProvider>
+        <MyOrdersView />
+      </AuthProvider>,
+    );
+
+    expect(await screen.findByText(messages.myOrders.status.EM_PRODUCAO)).toBeInTheDocument();
+    expect(subscribeToOrderUpdatesMock).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      realtimeListener?.({
+        type: 'ORDER_STATUS_UPDATED',
+        orderId: producingOrder.id,
+        userId: authenticatedCustomer.id,
+        status: 'PRONTO',
+        updatedAt: '2026-10-29T22:00:00.000Z',
+      });
+    });
+
+    expect(await screen.findByText(messages.myOrders.status.PRONTO)).toBeInTheDocument();
+    await waitFor(() => expect(fetchCurrentUserMock).toHaveBeenCalledTimes(2));
   });
 });

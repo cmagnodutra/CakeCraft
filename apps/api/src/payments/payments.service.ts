@@ -1,11 +1,12 @@
 import { timingSafeEqual } from 'node:crypto';
 
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Optional, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { OrderStatus, PaymentStatus } from '@prisma/client';
 
 import { AppEnvironment } from '../config/env.validation';
 import { PrismaService } from '../prisma/prisma.service';
+import { ORDER_EVENTS_CHANNEL, OrderRealtimeEvent, RedisService } from '../redis/redis.service';
 import { AsaasWebhookDto } from './dto/asaas-webhook.dto';
 
 export interface WebhookProcessingResult {
@@ -29,6 +30,7 @@ export class PaymentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService<AppEnvironment, true>,
+    @Optional() private readonly redis?: RedisService,
   ) {}
 
   verifyWebhookToken(providedToken: string | undefined): void {
@@ -89,6 +91,18 @@ export class PaymentsService {
         }
       });
 
+      const nextStatus =
+        record.order.status === OrderStatus.AGUARDANDO_PAGAMENTO
+          ? OrderStatus.EM_ESPERA
+          : record.order.status;
+      await this.publishOrderEvent({
+        type: 'ORDER_PAID',
+        orderId: record.orderId,
+        userId: record.order.userId,
+        status: nextStatus,
+        updatedAt: new Date().toISOString(),
+      });
+
       return { received: true, status: 'PAID' };
     }
 
@@ -113,9 +127,23 @@ export class PaymentsService {
           data: { status: OrderStatus.CANCELADO },
         });
       });
+
+      await this.publishOrderEvent({
+        type: 'ORDER_CANCELLED',
+        orderId: record.orderId,
+        userId: record.order.userId,
+        status: OrderStatus.CANCELADO,
+        updatedAt: new Date().toISOString(),
+      });
+
       return { received: true, status: 'REFUNDED' };
     }
 
     return { received: true, status: 'IGNORED' };
+  }
+
+  private async publishOrderEvent(event: OrderRealtimeEvent): Promise<void> {
+    if (!this.redis) return;
+    await this.redis.publishJson(ORDER_EVENTS_CHANNEL, event);
   }
 }

@@ -2,8 +2,12 @@ import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 
+import { ConfigService } from '@nestjs/config';
+
 import { configureApp } from '../../app.setup';
+import { AppEnvironment } from '../../config/env.validation';
 import { PrismaService } from '../../prisma/prisma.service';
+import { RedisService } from '../../redis/redis.service';
 
 /**
  * Teste de integracao HTTP de Rate Limiting (RNF05 e Secao 6 do RFC).
@@ -42,17 +46,23 @@ describe('Rate Limiting - ThrottlerGuard (integracao HTTP)', () => {
 
     const { AppModule } = await import('../../app.module');
 
+    const localRedis = new RedisService({
+      get: () => undefined,
+    } as unknown as ConfigService<Partial<AppEnvironment>>);
+
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     })
       .overrideProvider(PrismaService)
       .useValue(fakePrisma)
+      .overrideProvider(RedisService)
+      .useValue(localRedis)
       .compile();
 
     app = moduleRef.createNestApplication();
     configureApp(app, 'http://localhost:3000');
     await app.init();
-  });
+  }, 15_000);
 
   afterAll(async () => {
     await app.close();

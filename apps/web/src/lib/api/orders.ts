@@ -10,6 +10,7 @@ export type OrderStatus =
   | 'EM_PRODUCAO'
   | 'FINALIZACAO'
   | 'PRONTO'
+  | 'ENTREGUE'
   | 'CANCELADO';
 
 export type PaymentStatus = 'PENDENTE' | 'PAGO' | 'EXPIRADO' | 'ESTORNADO';

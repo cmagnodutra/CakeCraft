@@ -4,17 +4,21 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
+  Optional,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { CakeFormat, Ingredient, OrderStatus, PaymentStatus, Prisma } from '@prisma/client';
 
 import { Role } from '../common/enums/role.enum';
 import { AuthenticatedUser } from '../common/types/authenticated-request';
+import { EmailService } from '../email/email.service';
 import { PIX_GATEWAY_PORT, PixGatewayPort } from '../payments/pix-gateway.port';
 import { CakeLayerInputDto } from '../pricing/dto/calculate-price.dto';
 import { PricingService } from '../pricing/pricing.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { ORDER_EVENTS_CHANNEL, RedisService } from '../redis/redis.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 
 export const PIX_EXPIRATION_MINUTES = 15;
@@ -109,10 +113,14 @@ type OrderWithRelations = Prisma.OrderGetPayload<{ include: typeof ORDER_INCLUDE
 
 @Injectable()
 export class OrdersService {
+  private readonly logger = new Logger(OrdersService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly pricingService: PricingService,
     @Inject(PIX_GATEWAY_PORT) private readonly pixGateway: PixGatewayPort,
+    @Optional() private readonly redis?: RedisService,
+    @Optional() private readonly emailService?: EmailService,
   ) {}
 
   /**
@@ -264,6 +272,33 @@ export class OrdersService {
         include: ORDER_INCLUDE,
       });
     });
+
+    if (this.redis) {
+      await this.redis.publishJson(ORDER_EVENTS_CHANNEL, {
+        type: 'ORDER_CANCELLED',
+        orderId: updated.id,
+        userId: updated.userId,
+        status: updated.status,
+        updatedAt: updated.updatedAt.toISOString(),
+      });
+    }
+
+    if (isAdmin && this.emailService && order.userId !== actor.id) {
+      const customer = await this.prisma.user.findUnique({ where: { id: order.userId } });
+      if (customer && !customer.anonymizedAt) {
+        try {
+          await this.emailService.sendOrderCancelledByBakeryEmail(
+            customer.email,
+            customer.name,
+            order.id,
+          );
+        } catch (error) {
+          this.logger.warn(
+            `Falha ao enviar e-mail de cancelamento do pedido ${order.id}: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
+      }
+    }
 
     return serializeOrder(updated);
   }

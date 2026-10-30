@@ -58,12 +58,26 @@ export function SiteHeader() {
                   {messages.nav.myOrders}
                 </Link>
                 {user.role === 'ADMIN' && (
-                  <Link
-                    href="/admin/catalogo"
-                    className={buttonStyles({ variant: 'ghost', size: 'md' })}
-                  >
-                    {messages.nav.adminCatalog}
-                  </Link>
+                  <>
+                    <Link
+                      href="/admin/producao"
+                      className={buttonStyles({ variant: 'ghost', size: 'md' })}
+                    >
+                      {messages.nav.adminKanban}
+                    </Link>
+                    <Link
+                      href="/admin/catalogo"
+                      className={buttonStyles({ variant: 'ghost', size: 'md' })}
+                    >
+                      {messages.nav.adminCatalog}
+                    </Link>
+                    <Link
+                      href="/admin/relatorios"
+                      className={buttonStyles({ variant: 'ghost', size: 'md' })}
+                    >
+                      {messages.nav.adminReports}
+                    </Link>
+                  </>
                 )}
                 <Link href="/perfil" className={buttonStyles({ variant: 'ghost', size: 'md' })}>
                   {messages.nav.profile}
