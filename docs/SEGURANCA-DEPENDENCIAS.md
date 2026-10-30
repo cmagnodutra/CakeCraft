@@ -82,9 +82,12 @@ quando o Jest/jsdom publicarem versoes que as troquem.
 Em outubro/2026 sairam advisories para versoes que o projeto tinha acabado de
 adotar: Next 16.0.0 a 16.4.2 (RCE em otimizacao de imagem e em `use cache`,
 DoS em Server Actions), body-parser 2.0.0 a 2.3.0 (DoS), multer 2.0.0 a 2.4.0
-(DoS) e nodemailer ate 10.1.3 (parsing de enderecos). O projeto nao usa
-`next/image`, `use cache`, Server Actions nem upload de arquivos, entao nao
-estava exposto, mas o criterio e `npm run audit:prod` = 0 e ele foi aplicado.
+(DoS) e nodemailer ate 10.1.3 (parsing de enderecos). Como o modulo de upload
+de arte em papel de arroz (`UploadsModule`, `RF05`) utiliza `multer` em
+producao (alem de inspecao propria de magic bytes e limite de 5 MB) e o
+`EmailModule` utiliza `nodemailer`, manter esses pacotes corrigidos e critico.
+Com `socket.io`, `socket.io-client` e `prom-client` incorporados nas branches
+finais, `npm run audit:prod` permanece fechando em **0 vulnerabilidades**.
 
 Rotina: rodar `npm run audit:prod` antes de cada merge e a cada sessao.
 

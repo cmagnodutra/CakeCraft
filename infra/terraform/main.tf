@@ -11,6 +11,7 @@ terraform {
 
 provider "azurerm" {
   features {}
+  subscription_id = var.subscription_id
 }
 
 resource "azurerm_resource_group" "cakecraft" {
@@ -44,7 +45,7 @@ resource "azurerm_public_ip" "cakecraft" {
   resource_group_name = azurerm_resource_group.cakecraft.name
   allocation_method   = "Static"
   sku                 = "Standard"
-  domain_name_label   = "${var.project_name}-app"
+  domain_name_label   = var.domain_name_label
 }
 
 resource "azurerm_network_security_group" "cakecraft" {
@@ -139,6 +140,13 @@ resource "azurerm_linux_virtual_machine" "cakecraft" {
   custom_data = base64encode(<<-EOF
     #!/bin/bash
     set -euxo pipefail
+    # Swap de 2 GiB: a VM gratuita tem 1 GiB de RAM para 7 containers
+    # (Postgres, Redis, API, Web, Prometheus, Grafana e Caddy).
+    fallocate -l 2G /swapfile
+    chmod 600 /swapfile
+    mkswap /swapfile
+    swapon /swapfile
+    echo '/swapfile none swap sw 0 0' >> /etc/fstab
     apt-get update
     apt-get install -y ca-certificates curl gnupg
     install -m 0755 -d /etc/apt/keyrings

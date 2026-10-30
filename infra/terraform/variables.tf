@@ -1,7 +1,18 @@
+variable "subscription_id" {
+  description = "ID da assinatura Azure for Students (az account show --query id -o tsv). Obrigatorio no azurerm 4.x"
+  type        = string
+}
+
 variable "project_name" {
   description = "Prefixo dos recursos provisionados no Microsoft Azure"
   type        = string
   default     = "cakecraft"
+}
+
+variable "domain_name_label" {
+  description = "Rotulo DNS unico na regiao: gera <rotulo>.<regiao>.cloudapp.azure.com"
+  type        = string
+  default     = "cakecraft-app"
 }
 
 variable "location" {
@@ -11,7 +22,7 @@ variable "location" {
 }
 
 variable "vm_size" {
-  description = "SKU compativel com creditos do Azure for Students (2 vCPU, 1-2 GB RAM)"
+  description = "SKU elegivel as 750h gratuitas do Azure for Students (2 vCPU, 1 GiB RAM + swap de 2 GiB via cloud-init)"
   type        = string
   default     = "Standard_B2ats_v2"
 }

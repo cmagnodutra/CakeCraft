@@ -14,6 +14,10 @@ jobs:
   quality-and-tests:
     name: Auditoria, Lint, Cobertura, E2E Real & SonarCloud
     runs-on: ubuntu-latest
+    env:
+      # Exposto no nivel do job para que a condicao `if` do step consiga le-lo
+      # (o contexto `env` de um step nao e visivel na propria condicao `if`).
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
     services:
       postgres:
@@ -99,8 +103,6 @@ jobs:
       - name: Analise estatica de qualidade e seguranca (SonarCloud)
         if: ${{ env.SONAR_TOKEN != '' }}
         uses: SonarSource/sonarqube-scan-action@v5
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   build-and-publish-images:
     name: Build e Publicacao de Containers no GHCR
@@ -166,6 +168,9 @@ jobs:
     needs: build-and-publish-images
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    env:
+      # Enquanto a VM nao existir (segredo vazio), o job conclui sem falhar.
+      AZURE_VM_HOST: ${{ secrets.AZURE_VM_HOST }}
 
     steps:
       - name: Checkout dos manifestos de producao
@@ -173,8 +178,6 @@ jobs:
 
       - name: Sincronizar manifestos de infraestrutura com a VM Azure
         if: ${{ env.AZURE_VM_HOST != '' }}
-        env:
-          AZURE_VM_HOST: ${{ secrets.AZURE_VM_HOST }}
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.AZURE_VM_HOST }}
@@ -185,8 +188,6 @@ jobs:
 
       - name: Atualizar imagens GHCR, executar migracoes e validar saude na VM Azure
         if: ${{ env.AZURE_VM_HOST != '' }}
-        env:
-          AZURE_VM_HOST: ${{ secrets.AZURE_VM_HOST }}
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.AZURE_VM_HOST }}
