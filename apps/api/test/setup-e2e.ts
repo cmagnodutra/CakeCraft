@@ -1,3 +1,6 @@
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 import { resolveE2eDatabaseUrl, resolveE2eRedisUrl } from './e2e-env';
 
 /**
@@ -21,3 +24,6 @@ process.env.SMTP_PASSWORD = process.env.SMTP_PASSWORD ?? 'chave-smtp-de-teste';
 process.env.SMTP_FROM = process.env.SMTP_FROM ?? 'CakeCraft <no-reply@cakecraft.dev>';
 process.env.THROTTLE_TTL_MS = '60000';
 process.env.THROTTLE_LIMIT = '120';
+process.env.ASAAS_API_KEY = 'sandbox-asaas-local-dev';
+process.env.ASAAS_WEBHOOK_TOKEN = 'token-webhook-asaas-e2e-seguro';
+process.env.UPLOAD_DIR = join(tmpdir(), 'cakecraft-e2e-uploads');

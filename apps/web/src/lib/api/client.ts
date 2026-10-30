@@ -49,8 +49,9 @@ export async function apiRequest<T = unknown>(
   const normalizedPath = path.replace(/^\/+/, '');
   const url = `${baseUrl}/${normalizedPath}`;
 
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
   const headers: Record<string, string> = { Accept: 'application/json' };
-  if (body !== undefined) {
+  if (body !== undefined && !isFormData) {
     headers['Content-Type'] = 'application/json';
   }
 
@@ -58,7 +59,7 @@ export async function apiRequest<T = unknown>(
     method,
     headers,
     credentials: 'include',
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: body === undefined ? undefined : isFormData ? body : JSON.stringify(body),
   };
 
   let response = await performFetch(url, init);

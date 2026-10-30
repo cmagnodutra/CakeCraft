@@ -40,14 +40,14 @@ describe('SiteHeader', () => {
     expect(links[0]).toHaveAccessibleName('Pular para o conteúdo');
   });
 
-  it('visitante deslogado ve apenas links para rotas existentes (/entrar e /cadastro)', () => {
+  it('visitante deslogado ve apenas links para rotas existentes (/builder, /entrar e /cadastro)', () => {
     render(<SiteHeader />);
 
     const destinos = screen.getAllByRole('link').map((link) => link.getAttribute('href'));
-    expect(destinos).toEqual(['#conteudo', '/', '/entrar', '/cadastro']);
+    expect(destinos).toEqual(['#conteudo', '/', '/builder', '/entrar', '/cadastro']);
   });
 
-  it('usuario autenticado ve link para /perfil e botao Sair que encerra a sessao', async () => {
+  it('usuario autenticado ve links para /builder, /meus-pedidos e /perfil e botao Sair', async () => {
     fetchCurrentUserMock.mockResolvedValue({
       id: 'u1',
       name: 'Mariana Silva',
@@ -67,6 +67,10 @@ describe('SiteHeader', () => {
 
     const profileLink = await screen.findByRole('link', { name: messages.nav.profile });
     expect(profileLink).toHaveAttribute('href', '/perfil');
+    expect(screen.getByRole('link', { name: messages.nav.myOrders })).toHaveAttribute(
+      'href',
+      '/meus-pedidos',
+    );
     expect(screen.queryByRole('link', { name: messages.nav.login })).not.toBeInTheDocument();
     expect(
       screen.queryByRole('link', { name: messages.nav.adminCatalog }),

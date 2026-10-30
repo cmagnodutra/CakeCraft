@@ -30,6 +30,21 @@ describe('envValidationSchema', () => {
     expect(value.SMTP_PORT).toBe(587);
     expect(value.THROTTLE_TTL_MS).toBe(60000);
     expect(value.THROTTLE_LIMIT).toBe(60);
+    expect(value.ASAAS_API_URL).toBe('https://api-sandbox.asaas.com/v3');
+    expect(value.ASAAS_API_KEY).toBe('sandbox-asaas-local-dev');
+    expect(value.ASAAS_WEBHOOK_TOKEN).toBe('token-webhook-asaas-local-dev');
+    expect(value.UPLOAD_DIR).toBe('uploads');
+  });
+
+  it('em producao exige ASAAS_API_KEY e ASAAS_WEBHOOK_TOKEN reais (recusa placeholders de dev)', () => {
+    const { error } = envValidationSchema.validate({
+      ...validEnv,
+      NODE_ENV: 'production',
+    });
+
+    expect(error).toBeDefined();
+    expect(error?.message).toContain('ASAAS_API_KEY');
+    expect(error?.message).toContain('ASAAS_WEBHOOK_TOKEN');
   });
 
   it('rejeita a ausencia de SMTP_HOST', () => {

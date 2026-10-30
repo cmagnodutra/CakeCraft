@@ -83,6 +83,19 @@ describe('apiRequest', () => {
       expect(JSON.parse(init.body as string)).toEqual({ email: 'a@b.com' });
     });
 
+    it('envia FormData intacto sem forcar Content-Type application/json (para o navegador anexar o boundary multipart)', async () => {
+      fetchMock.mockResolvedValue(respond(201, { url: '/api/uploads/rice-paper/1.png' }));
+      const formData = new FormData();
+      formData.append('file', new Blob(['png'], { type: 'image/png' }), 'arte.png');
+
+      await apiRequest('/uploads/rice-paper', { method: 'POST', body: formData });
+
+      const init = fetchMock.mock.calls[0][1] as RequestInit;
+      expect(init.body).toBe(formData);
+      expect(init.headers).not.toHaveProperty('Content-Type');
+      expect(init.credentials).toBe('include');
+    });
+
     it('aceita caminho sem a barra inicial', async () => {
       fetchMock.mockResolvedValue(respond(200, {}));
 

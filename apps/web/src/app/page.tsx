@@ -20,9 +20,12 @@ export default function HomePage() {
         <span className="block text-accent italic">{texts.titleAccent}</span>
       </h1>
       <p className="mt-6 max-w-xl text-lg text-ink-muted">{texts.body}</p>
-      <div className="mt-10">
+      <div className="mt-10 flex flex-wrap gap-3">
         <Link href="/cadastro" className={buttonStyles({ size: 'lg' })}>
           {texts.cta}
+        </Link>
+        <Link href="/builder" className={buttonStyles({ variant: 'secondary', size: 'lg' })}>
+          {texts.builderCta}
         </Link>
       </div>
     </section>

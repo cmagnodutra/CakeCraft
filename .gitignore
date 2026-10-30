@@ -37,3 +37,7 @@ Thumbs.db
 
 # Gerado pelo Next a cada build/dev
 next-env.d.ts
+
+# Uploads locais em tempo de execucao (RF05 - papel de arroz)
+/uploads/
+/apps/api/uploads/

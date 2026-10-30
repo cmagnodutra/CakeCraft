@@ -19,6 +19,8 @@ export const messages = {
   },
   nav: {
     ariaLabel: 'Navegação principal',
+    builder: 'Montar bolo',
+    myOrders: 'Meus pedidos',
     login: 'Entrar',
     register: 'Criar conta',
     adminCatalog: 'Catálogo',
@@ -30,6 +32,7 @@ export const messages = {
     titleAccent: 'com o preço na hora.',
     body: 'Monte o seu bolo camada por camada, veja o valor a cada escolha e acompanhe o pedido até a retirada, sem esperar orçamento por mensagem.',
     cta: 'Criar minha conta',
+    builderCta: 'Montar meu bolo agora',
   },
   auth: {
     register: {
@@ -277,6 +280,169 @@ export const messages = {
     errors: {
       loadFailed: 'Não foi possível carregar o catálogo. Tente novamente.',
       saveFailed: 'Não foi possível salvar o insumo. Confira os dados e tente novamente.',
+      network: 'Não foi possível conectar ao servidor. Verifique sua conexão e tente de novo.',
+    },
+  },
+  builder: {
+    title: 'Montador de bolo',
+    subtitle:
+      'Escolha formato, andares, massas, recheios e cobertura com cálculo de preço na hora e visualização 3D interativa.',
+    loadingCatalog: 'Carregando catálogo da confeitaria...',
+    emptyCatalog:
+      'Ainda não há insumos ativos suficientes no catálogo (massa, recheio e cobertura) para montar um bolo.',
+    preview: {
+      title: 'Pré-visualização 3D',
+      figureLabel: (floors: number, formatLabel: string, colorHex: string) =>
+        `Bolo ${formatLabel.toLowerCase()} de ${floors} ${floors === 1 ? 'andar' : 'andares'} com cobertura ${colorHex}`,
+      rotateLeft: 'Girar à esquerda',
+      rotateRight: 'Girar à direita',
+      resetAngle: 'Centralizar',
+      angleBadge: (degrees: number) => `Ângulo ${degrees}°`,
+      ricePaperBadge: 'Arte em papel de arroz aplicada no topo',
+    },
+    structureSection: {
+      title: 'Estrutura e acabamento',
+      formatLabel: 'Formato do bolo',
+      formats: {
+        REDONDO: 'Redondo',
+        QUADRADO: 'Quadrado',
+        RETANGULAR: 'Retangular',
+      },
+      floorsLabel: 'Quantidade de andares',
+      floorOption: (count: number) => (count === 1 ? '1 andar' : `${count} andares`),
+      colorLabel: 'Cor da cobertura (HEX)',
+      colorPickerLabel: 'Seletor visual de cor da cobertura',
+      swatchesLabel: 'Tons clássicos da confeitaria',
+    },
+    dietarySection: {
+      title: 'Restrições alimentares',
+      hint: 'Marque restrições para validarmos automaticamente possíveis alergênicos nos insumos escolhidos (RF06).',
+      options: {
+        lactose: 'Sem lactose / leite',
+        gluten: 'Sem glúten',
+        ovos: 'Sem ovos',
+        castanhas: 'Sem castanhas',
+        amendoim: 'Sem amendoim',
+        soja: 'Sem soja',
+      },
+      conflictTitle: 'Conflito de alergênicos detectado',
+      conflictDetail: (
+        floorNumber: number,
+        ingredientName: string,
+        restrictionLabel: string,
+        substituteName?: string,
+      ) =>
+        substituteName
+          ? `${floorNumber}º andar: "${ingredientName}" conflita com "${restrictionLabel}". Sugestão compatível: ${substituteName}.`
+          : `${floorNumber}º andar: "${ingredientName}" conflita com "${restrictionLabel}". Nenhum substituto ativo sem esse alergênico nesta categoria.`,
+    },
+    floorsSection: {
+      title: 'Camadas por andar',
+      floorHeading: (floorNumber: number) =>
+        floorNumber === 1 ? '1º andar (base)' : `${floorNumber}º andar`,
+      weightLabel: 'Peso estimado (kg)',
+      doughLabel: 'Massa',
+      coverageLabel: 'Cobertura',
+      fillingsLabel: 'Recheios (até 2 por andar)',
+      aeratedBlockedTag: 'Indisponível acima de 2 andares (RN01)',
+      aeratedAutoAdjusted:
+        'Para bolos com 3 ou 4 andares, massas aeradas foram substituídas automaticamente por massas estruturadas para garantir sustentação (RN01).',
+      aeratedManualError:
+        'Bolos com mais de 2 andares não suportam massas aeradas por risco estrutural (RN01). Escolha uma massa estruturada.',
+      fillingsCountError: 'Escolha pelo menos 1 e no máximo 2 recheios em cada andar.',
+    },
+    personalizationSection: {
+      title: 'Personalização e entrega',
+      toppingMessageLabel: 'Mensagem de topo (opcional)',
+      toppingMessageHint: 'Até 120 caracteres (ex.: Parabéns, Marina!).',
+      ricePaperLabel: 'Arte para papel de arroz (opcional — PNG, JPEG ou WEBP até 5 MB)',
+      ricePaperUploading: 'Validando e enviando imagem...',
+      ricePaperUploaded: 'Imagem validada e anexada ao pedido.',
+      removeRicePaper: 'Remover imagem',
+      deliveryAddressLabel: 'Endereço de entrega ou observação de retirada (opcional)',
+    },
+    quoteSection: {
+      title: 'Orçamento em tempo real',
+      calculating: 'Atualizando orçamento...',
+      floorItem: (floorNumber: number, weightFormatted: string) =>
+        `${floorNumber}º andar (${weightFormatted} kg)`,
+      assemblyFee: 'Taxa base de montagem artesanal',
+      total: 'Total do pedido',
+      pixNotice: 'Pagamento via PIX (Asaas) com QR Code válido por 15 minutos após confirmar.',
+      guestNotice:
+        'Seu rascunho está salvo nesta aba. Entre ou crie sua conta para gerar o QR Code PIX e enviar o pedido.',
+      loginToCheckout: 'Entrar para finalizar pedido',
+      registerToCheckout: 'Criar conta',
+      submitOrder: 'Finalizar pedido e gerar PIX',
+      resetDraft: 'Restaurar configuração inicial',
+    },
+    errors: {
+      catalogLoad: 'Não foi possível carregar o catálogo de insumos. Tente novamente.',
+      pricingFailed: 'Não foi possível calcular o orçamento desta combinação.',
+      uploadFailed:
+        'Imagem recusada. Envie um arquivo PNG, JPEG ou WEBP autêntico com até 5 MB.',
+      orderFailed:
+        'Não foi possível registrar o pedido. Revise as camadas e restrições selecionadas.',
+      network: 'Não foi possível conectar ao servidor. Verifique sua conexão e tente de novo.',
+    },
+  },
+  myOrders: {
+    title: 'Meus pedidos',
+    subtitle: 'Acompanhe o pagamento via PIX e o progresso artesanal de cada encomenda na cozinha.',
+    newCakeCta: 'Montar novo bolo',
+    loadingMessage: 'Carregando seus pedidos...',
+    unauthenticatedTitle: 'Entre para consultar seus pedidos',
+    unauthenticatedBody:
+      'Acesse sua conta para visualizar códigos PIX pendentes, acompanhar o preparo na cozinha ou gerenciar encomendas.',
+    goToLogin: 'Entrar',
+    goToBuilder: 'Montar um bolo',
+    emptyTitle: 'Nenhum pedido por aqui ainda',
+    emptyBody: 'Monte seu primeiro bolo sob medida e acompanhe tudo em tempo real.',
+    createdBanner:
+      'Pedido registrado com sucesso! Realize o pagamento via PIX em até 15 minutos para enviá-lo automaticamente à fila da cozinha.',
+    orderTitle: (shortId: string) => `Pedido #${shortId}`,
+    createdAt: (formattedDate: string) => `Registrado em ${formattedDate}`,
+    cakeSummary: (formatLabel: string, floorsCount: number) =>
+      floorsCount === 1 ? `${formatLabel} · 1 andar` : `${formatLabel} · ${floorsCount} andares`,
+    toppingPrefix: 'Mensagem de topo:',
+    deliveryPrefix: 'Entrega / retirada:',
+    dietaryPrefix: 'Restrições declaradas:',
+    ricePaperLink: 'Abrir arte do papel de arroz',
+    itemsHeading: 'Insumos registrados no pedido',
+    status: {
+      AGUARDANDO_PAGAMENTO: 'Aguardando pagamento PIX',
+      EM_ESPERA: 'Pago · Na fila da cozinha',
+      EM_PRODUCAO: 'Em preparo na cozinha',
+      FINALIZACAO: 'Em acabamento e confeitaria',
+      PRONTO: 'Pronto para retirada / entrega',
+      CANCELADO: 'Cancelado',
+    },
+    paymentStatus: {
+      PENDENTE: 'PIX aguardando pagamento',
+      PAGO: 'Pagamento PIX confirmado',
+      EXPIRADO: 'QR Code PIX expirado',
+      ESTORNADO: 'Pagamento estornado',
+    },
+    pix: {
+      title: 'Pagamento instantâneo via PIX',
+      qrAlt: (shortId: string) => `QR Code PIX do pedido ${shortId}`,
+      expiresAt: (formattedTime: string) => `Expira às ${formattedTime}`,
+      copyPasteLabel: 'Código PIX Copia e Cola',
+      copyButton: 'Copiar código PIX',
+      copiedFeedback: 'Código PIX copiado para a área de transferência.',
+      expiredNotice:
+        'O prazo de 15 minutos deste QR Code expirou. Gere uma nova cobrança PIX ou cancele o pedido sem custo.',
+      regenerateButton: 'Gerar novo código PIX',
+      regeneratedFeedback: 'Novo QR Code PIX emitido com validade de 15 minutos.',
+    },
+    actions: {
+      cancelOrder: 'Cancelar pedido',
+      cancelledFeedback: 'Pedido cancelado com sucesso.',
+    },
+    errors: {
+      loadFailed: 'Não foi possível carregar seus pedidos. Tente novamente.',
+      actionFailed: 'Não foi possível concluir a operação neste pedido. Tente novamente.',
+      copyFailed: 'Não foi possível copiar automaticamente. Copie o código exibido no campo.',
       network: 'Não foi possível conectar ao servidor. Verifique sua conexão e tente de novo.',
     },
   },

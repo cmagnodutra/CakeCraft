@@ -147,17 +147,45 @@ o Postgres; quem cobre o banco sao os testes e2e da API.
    e deteccao de reuso, `POST /api/auth/forgot-password`,
    `POST /api/auth/reset-password` e `DELETE /api/usuarios/me/anonymize`).
 
+## 8. Cake Builder (`/builder`), preview 3D isometrico e checkout PIX (`/meus-pedidos`)
+
+**Preview 3D rotacionavel sem WebGL (`CakePreview3D`).** O RFC (RF04) exige
+visualizacao 3D interativa e rotacionavel com atualizacao instantanea de cor
+(HEX), formato (`REDONDO`, `QUADRADO`, `RETANGULAR`) e quantidade de andares
+(1 a 4). Em vez de embutir `three.js` (~600 KB minificado e sujeito a perda de
+contexto WebGL em navegadores moveis e ambientes headless), o componente projeta
+cilindros e prismas isometricos vetoriais em SVG combinados com perspectiva CSS
+3D (`perspective: 900px`, rotacao `-180` a `+180` graus) e sombreamento High-Key
+calculado diretamente do HEX da cobertura. O resultado renderiza em `< 16ms`,
+funciona em qualquer dispositivo sem GPU dedicada, e e 100% testavel em Jest.
+
+**Persistencia de rascunho em `sessionStorage` (Secao 3.2 do RFC).** Visitantes
+podem montar o bolo antes de autenticar. O estado da montagem (somente formato,
+cor, camadas, restricoes, mensagem de topo e URL relativa da imagem — nunca
+tokens ou dados pessoais) fica salvo em `cakecraft:builder-draft:v1` no
+`sessionStorage` e e restaurado automaticamente apos login ou cadastro. Ao
+concluir `POST /orders`, o rascunho e limpo.
+
+**Regras RN01 e RF06 espelhadas na interface e revalidadas no servidor.** Ao
+subir para 3 ou 4 andares, massas aeradas (`isAerated = true`) ficam bloqueadas
+no seletor e eventuais selecoes anteriores sao trocadas automaticamente pela
+primeira massa estruturada ativa (`RN01`). Ao marcar restricoes alimentares
+(`RF06`), o builder cruza alergenicos equivalentes (`lactose`/`leite`,
+`gluten`/`trigo`, `ovos`, `castanhas`, `amendoim`, `soja`), exibe alerta
+bloqueante com sugestao de substituto compativel da mesma categoria e impede o
+envio ate a correcao. O backend (`PricingService` e `OrdersService`) revalida
+ambas as regras de forma independente.
+
 ## Decisoes de design ja tomadas (valem para as proximas branches)
 
 - **Tipografia:** serifa elegante nos titulos + sans limpa no corpo,
   autohospedadas (sem requisicao ao Google Fonts: melhor para LGPD e para
   o build offline).
-- **Bolo no Cake Builder:** render 3D rotacionavel (three.js), carregado
-  sob demanda para nao pesar a landing e o login, com fallback para
-  aparelhos fracos.
+- **Bolo no Cake Builder:** projecao 3D isometrica rotacionavel em SVG + CSS 3D
+  (`CakePreview3D`), instantanea e resiliente em celulares sem exigir WebGL.
 - **Cor:** neutros quentes (off-white e areia) em vez de cinza frio; CTAs
   continuam em preto solido com texto branco (design system "High-Key").
-- **Layout do builder:** desktop com bolo 3D a esquerda e painel de etapas a
-  direita; mobile com bolo no topo e etapas em bottom sheet.
+- **Layout do builder:** desktop em duas colunas (configuracao a esquerda +
+  preview 3D e orcamento fixos a direita); mobile empilhado com alvos >= 44px.
 - **Idioma:** pt-BR, com textos centralizados em um arquivo.
 - **Marca:** "CakeCraft", so tipografica.
