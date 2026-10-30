@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { OrderStatus, PaymentStatus } from '@prisma/client';
 
 import { AppEnvironment } from '../config/env.validation';
+import { MetricsService } from '../metrics/metrics.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ORDER_EVENTS_CHANNEL, OrderRealtimeEvent, RedisService } from '../redis/redis.service';
 import { AsaasWebhookDto } from './dto/asaas-webhook.dto';
@@ -31,6 +32,7 @@ export class PaymentsService {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService<AppEnvironment, true>,
     @Optional() private readonly redis?: RedisService,
+    @Optional() private readonly metricsService?: MetricsService,
   ) {}
 
   verifyWebhookToken(providedToken: string | undefined): void {
@@ -55,6 +57,7 @@ export class PaymentsService {
     dto: AsaasWebhookDto,
   ): Promise<WebhookProcessingResult> {
     this.verifyWebhookToken(providedToken);
+    this.metricsService?.recordPixWebhook(dto.event);
 
     const orClauses: Array<{ gatewayReference?: string; orderId?: string }> = [
       { gatewayReference: dto.payment.id },

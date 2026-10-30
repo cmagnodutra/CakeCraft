@@ -31,4 +31,17 @@ describe('Health (e2e - PostgreSQL real)', () => {
     });
     expect(typeof response.body.timestamp).toBe('string');
   });
+
+  it('GET /api/metrics expoe metricas Prometheus de processo e histograma HTTP (RNF01 / RNF07)', async () => {
+    await request(server()).get('/api/health').expect(200);
+
+    const metricsRes = await request(server()).get('/api/metrics').expect(200);
+
+    expect(metricsRes.headers['content-type']).toContain('text/plain');
+    expect(metricsRes.text).toContain('cakecraft_nodejs_version_info');
+    expect(metricsRes.text).toContain(
+      'cakecraft_http_requests_total{method="GET",route="/api/health",status_code="200"}',
+    );
+    expect(metricsRes.text).toContain('cakecraft_http_request_duration_seconds_bucket');
+  });
 });

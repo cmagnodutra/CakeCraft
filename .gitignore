@@ -7,11 +7,13 @@ build/
 .next/
 out/
 
-# Variaveis de ambiente (o .env.example e versionado de proposito)
+# Variaveis de ambiente (os .env*.example sao versionados de proposito)
 .env
 .env.local
 .env.*.local
+.env.production
 !.env.example
+!.env.production.example
 
 # Logs
 npm-debug.log*
@@ -41,3 +43,9 @@ next-env.d.ts
 # Uploads locais em tempo de execucao (RF05 - papel de arroz)
 /uploads/
 /apps/api/uploads/
+
+# Estado local e segredos do Terraform (IaC Azure)
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfvars

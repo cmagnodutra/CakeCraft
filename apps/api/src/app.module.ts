@@ -10,6 +10,7 @@ import { EmailModule } from './email/email.module';
 import { GamificationModule } from './gamification/gamification.module';
 import { HealthModule } from './health/health.module';
 import { KanbanModule } from './kanban/kanban.module';
+import { MetricsModule } from './metrics/metrics.module';
 import { OrdersModule } from './orders/orders.module';
 import { PaymentsModule } from './payments/payments.module';
 import { PricingModule } from './pricing/pricing.module';
@@ -40,6 +41,7 @@ import { UploadsModule } from './uploads/uploads.module';
     }),
     PrismaModule,
     RedisModule,
+    MetricsModule,
     HealthModule,
     AuthModule,
     PricingModule,

@@ -8,7 +8,7 @@ Request for Comments — Projeto de Portfólio
 
 ## Engenharia de Software – Católica SC
 
-Carlos Magno Dutra da Silva Filho Junho / 2026 · Versão 1.4
+Carlos Magno Dutra da Silva Filho Outubro / 2026 · Versão 1.5
 
 
 ## Sumário
@@ -90,9 +90,7 @@ Carlos Magno Dutra da Silva Filho Junho / 2026 · Versão 1.4
 [5.2 Modelo de Dados ............................................................................................................. 22](#page-0)
 
 
-5.3 Principais Componentes .................................................................................................. 22 5.4 Stack Tecnológica ........................................................................................................... 23 6. Segurança e Privacidade ....................................................................................................... 24 6.1 Privacidade e LGPD ......................................................................................................... 24 7. Planejamento do Projeto ....................................................................................................... 25 Detalhamento por Ciclo ..................................................................................................... 25 8. Referências .......................................................................................................................... 26 9. Apêndices ............................................................................................................................ 27 Apêndice A — Matriz SWOT .................................................................................................. 27 Apêndice B — Estratégia de Qualidade e Testes (TDD) ........................................................... 27 10. Parecer do Comitê de Avaliação .......................................................................................... 28 Avaliador 1 ........................................................................................................................ 28 Avaliador 2 ........................................................................................................................ 28 [URL 🔗](#page-0)
-
-Avaliador 3 ............................................................................. Erro! Indicador não definido.
+5.3 Principais Componentes .................................................................................................. 22 5.4 Stack Tecnológica ........................................................................................................... 23 6. Segurança e Privacidade ....................................................................................................... 24 6.1 Privacidade e LGPD ......................................................................................................... 24 7. Planejamento do Projeto ....................................................................................................... 25 Detalhamento por Ciclo ..................................................................................................... 25 8. Referências .......................................................................................................................... 26 9. Apêndices ............................................................................................................................ 27 Apêndice A — Matriz SWOT .................................................................................................. 27 Apêndice B — Estratégia de Qualidade e Testes (TDD) ........................................................... 27 10. Parecer do Comitê de Avaliação .......................................................................................... 28
 
 
 ## Identificação
@@ -102,9 +100,18 @@ Avaliador 3 ....................................................................
 | Título do Projeto | CakeCraft — Plataforma Web B2C para Montagem de Bolos Customizados |
 | Linha de Projeto (Direction) | Web / E-commerce B2C e Gestão de Pedidos |
 | Autor | Carlos Magno Dutra da Silva Filho |
-| Disciplina | Engenharia de Software (PAC VII) |
-| Data da Proposta | Junho / 2026 |
-| Versão | 1.4 — Adequação Estrutural ao Modelo Oficial de RFC |
+| Disciplina | Engenharia de Software (PAC VII / PAC VIII) |
+| Data da Proposta | Junho / 2026 (Consolidado em Outubro / 2026) |
+| Versão | 1.5 — Consolidação de Implementação, Cloud Azure e Diagramas C4 |
+
+### Histórico de Consolidação Técnica (v1.4 -> v1.5)
+
+| Aspecto do RFC | Decisão Consolidada na Implementação | Referência no Repositório |
+| --- | --- | --- |
+| Frontend Web (Seção 5.4) | Atualizado para **Next.js 16.4.3 + React 19** (mitigação de advisories de segurança em versões anteriores) e preview 3D isométrico rotacionável sem dependência de WebGL | `docs/DECISOES-FRONTEND.md` |
+| Gateway PIX (`RF07` / `RN03`) | **Asaas API v3** (`https://api-sandbox.asaas.com/v3` / `https://api.asaas.com/v3`) com validação de webhook via `asaas-access-token` (`timingSafeEqual`) e estorno automatizado | `apps/api/src/payments/` |
+| Diagramas C4, ER e Sequência (Seções 3.1, 5.1 e 5.2) | Versionados integralmente como código em Mermaid (C4 Níveis 1, 2 e 3, `erDiagram` das 9 tabelas Prisma e sequência completa) | `docs/ARQUITETURA-C4.md` |
+| Cloud, CI/CD, Qualidade e Observabilidade | **Microsoft Azure** (`brazilsouth`, IaC via **Terraform**), **Caddy 2.8** (HTTPS Let's Encrypt), **GitHub Actions** + **GHCR**, **SonarCloud** e **Prometheus + Grafana** (`RNF01` e `RNF07`) | `docs/DEPLOY-AZURE-ASAAS-SONAR.md` |
 
 
 ## 1. Visão do Produto e Impacto (O Problema)
@@ -396,10 +403,9 @@ Esta seção demonstra, em nível de comportamento, como o CakeCraft reage às a
 Dois fluxos compõem o comportamento principal do sistema: o fluxo de atividades do cliente (frontend) e o fluxo de sequência de integração do backend.
 
 
-## DIAGRAMA DE ATIVIDADES
+## DIAGRAMA DE ATIVIDADES E SEQUÊNCIA
 
-
-DIAGRAMA DE SEQUÊNCIA — INTEGRAÇÃO BACKEND DE PEDIDO E PAGAMENTO
+Os diagramas executáveis em Mermaid referentes ao fluxo completo de pedido, cobrança PIX Asaas, webhook idempotente, mensageria Redis Pub/Sub, Kanban em tempo real via Socket.io e progressão de XP encontram-se em `docs/ARQUITETURA-C4.md` (Seção 5).
 
 ## 3.2 Fluxos Alternativos
 
@@ -472,25 +478,19 @@ Passo a passo do fluxo principal de interação, do primeiro acesso até a concl
 
 ## 4.4 Feedback Inicial de Usuários (Opcional)
 
-Até o momento desta versão do RFC, não foram conduzidos testes formais de usabilidade com protótipo navegável. Como validação indireta de interesse, destaca-se que 90% dos 45 clientes B2C entrevistados durante a pesquisa de mercado (Seção 1.2) declararam interesse em uma ferramenta de montagem visual com retorno instantâneo de preço — o que reforça a direção de produto adotada para o Cake Builder.5. Arquitetura do Sistema
+Até o momento desta versão do RFC, não foram conduzidos testes formais de usabilidade com protótipo navegável. Como validação indireta de interesse, destaca-se que 90% dos 45 clientes B2C entrevistados durante a pesquisa de mercado (Seção 1.2) declararam interesse em uma ferramenta de montagem visual com retorno instantâneo de preço — o que reforça a direção de produto adotada para o Cake Builder.
 
-Esta seção demonstra como o CakeCraft será construído tecnicamente, partindo de uma visão macro de contexto (C4 Nível 1) até o detalhamento dos componentes internos da API (C4 Nível 3), seguida do modelo de dados e da stack tecnológica adotada.
+## 5. Arquitetura do Sistema
+
+Esta seção demonstra como o CakeCraft é construído tecnicamente, partindo de uma visão macro de contexto (C4 Nível 1) até o detalhamento dos componentes internos da API (C4 Nível 3), seguida do modelo de dados e da stack tecnológica adotada.
 
 ## 5.1 Diagrama C4
 
-*Nível 1 — Diagrama de Contexto*
-
-
-## Nível 2 — Diagrama de Containers
-
-## C4 NÍVEL 2 — CONTAINERS
-
-## Nível 3 — Diagrama de Componentes
-
-## C4 NÍVEL 3 — COMPONENTES INTERNOS DA API CORE
-
+Os diagramas completos de Contexto (C4 Nível 1), Containers no Microsoft Azure (C4 Nível 2) e Componentes Internos de `@cakecraft/api` (C4 Nível 3) estão versionados em Mermaid em `docs/ARQUITETURA-C4.md` (Seções 1 a 3).
 
 ## 5.2 Modelo de Dados
+
+O diagrama Entidade-Relacionamento (`erDiagram`) completo das 9 tabelas relacionais (`users`, `refresh_tokens`, `ingredients`, `orders`, `cake_configurations`, `cake_layers`, `cake_layer_fillings`, `order_items`, `payments` e `xp_transactions`) está documentado em `docs/ARQUITETURA-C4.md` (Seção 4) e implementado em `apps/api/prisma/schema.prisma`.
 
 ## 5.3 Principais Componentes
 
