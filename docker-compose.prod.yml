@@ -1,0 +1,184 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: cakecraft-prod-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cakecraft}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no .env.production}
+      POSTGRES_DB: ${POSTGRES_DB:-cakecraft}
+    volumes:
+      - cakecraft_prod_pgdata:/var/lib/postgresql/data
+    networks:
+      - backend_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cakecraft}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: cakecraft-prod-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?Defina REDIS_PASSWORD no .env.production}"]
+    volumes:
+      - cakecraft_prod_redisdata:/data
+    networks:
+      - backend_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  migrate:
+    image: ${API_MIGRATE_IMAGE:-ghcr.io/cmagnodutra/cakecraft-api-migrate:latest}
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: migrate
+    restart: "no"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-cakecraft}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-cakecraft}?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend_net
+
+  api:
+    image: ${API_IMAGE:-ghcr.io/cmagnodutra/cakecraft-api:latest}
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: runner
+    container_name: cakecraft-prod-api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      CORS_ORIGIN: https://${APP_DOMAIN:?Defina APP_DOMAIN no .env.production}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-cakecraft}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-cakecraft}?schema=public
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?Defina JWT_ACCESS_SECRET}
+      JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Defina JWT_REFRESH_SECRET}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      BCRYPT_SALT_ROUNDS: ${BCRYPT_SALT_ROUNDS:-12}
+      SMTP_HOST: ${SMTP_HOST:?Defina SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:?Defina SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:?Defina SMTP_PASSWORD}
+      SMTP_FROM: ${SMTP_FROM:-CakeCraft <no-reply@cakecraft.dev>}
+      THROTTLE_TTL_MS: ${THROTTLE_TTL_MS:-60000}
+      THROTTLE_LIMIT: ${THROTTLE_LIMIT:-60}
+      ASAAS_API_URL: ${ASAAS_API_URL:-https://api-sandbox.asaas.com/v3}
+      ASAAS_API_KEY: ${ASAAS_API_KEY:?Defina ASAAS_API_KEY}
+      ASAAS_WEBHOOK_TOKEN: ${ASAAS_WEBHOOK_TOKEN:?Defina ASAAS_WEBHOOK_TOKEN}
+      ASAAS_DEFAULT_CPF_CNPJ: ${ASAAS_DEFAULT_CPF_CNPJ:-24971563792}
+      UPLOAD_DIR: /app/apps/api/uploads
+    volumes:
+      - cakecraft_prod_uploads:/app/apps/api/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - backend_net
+      - edge_net
+
+  web:
+    image: ${WEB_IMAGE:-ghcr.io/cmagnodutra/cakecraft-web:latest}
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: https://${APP_DOMAIN}/api
+    container_name: cakecraft-prod-web
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      NEXT_PUBLIC_API_URL: https://${APP_DOMAIN}/api
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - edge_net
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: cakecraft-prod-prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+    volumes:
+      - ./infra/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - cakecraft_prod_promdata:/prometheus
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - backend_net
+
+  grafana:
+    image: grafana/grafana-oss:11.3.1
+    container_name: cakecraft-prod-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Defina GRAFANA_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: https://${APP_DOMAIN}/grafana/
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+    volumes:
+      - ./infra/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - cakecraft_prod_grafanadata:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - backend_net
+      - edge_net
+
+  caddy:
+    image: caddy:2.8-alpine
+    container_name: cakecraft-prod-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN}
+    volumes:
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - cakecraft_prod_caddy_data:/data
+      - cakecraft_prod_caddy_config:/config
+    depends_on:
+      - web
+      - api
+      - grafana
+    networks:
+      - edge_net
+
+networks:
+  backend_net:
+    driver: bridge
+    internal: false
+  edge_net:
+    driver: bridge
+
+volumes:
+  cakecraft_prod_pgdata:
+  cakecraft_prod_redisdata:
+  cakecraft_prod_uploads:
+  cakecraft_prod_promdata:
+  cakecraft_prod_grafanadata:
+  cakecraft_prod_caddy_data:
+  cakecraft_prod_caddy_config:

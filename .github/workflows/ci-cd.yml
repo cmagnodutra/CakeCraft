@@ -1,0 +1,203 @@
+name: CakeCraft CI/CD (Quality Gate, SonarCloud & Azure Deploy)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  quality-and-tests:
+    name: Auditoria, Lint, Cobertura, E2E Real & SonarCloud
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: cakecraft
+          POSTGRES_PASSWORD: cakecraft
+          POSTGRES_DB: cakecraft
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U cakecraft"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Checkout do repositorio (historico completo para SonarCloud)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configurar Node.js 22 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Instalar dependencias (lockfile imutavel)
+        run: npm ci
+
+      - name: Auditoria de seguranca em dependencias de producao (0 vulnerabilidades)
+        run: npm run audit:prod
+
+      - name: Lint e Typecheck (API + Web)
+        run: |
+          npm run lint:api
+          npm run lint:web
+          npm run typecheck -w @cakecraft/web
+
+      - name: Aplicar migracoes Prisma no PostgreSQL 16 de CI
+        env:
+          DATABASE_URL: postgresql://cakecraft:cakecraft@localhost:5432/cakecraft?schema=public
+        run: npm run db:migrate
+
+      - name: Testes unitarios + integracao HTTP com cobertura (API >= 75%)
+        run: npm run test:cov:api
+
+      - name: Testes E2E reais contra PostgreSQL 16 e Redis 7
+        env:
+          NODE_ENV: test
+          DATABASE_URL: postgresql://cakecraft:cakecraft@localhost:5432/cakecraft?schema=public
+          REDIS_URL: redis://localhost:6379/1
+          JWT_ACCESS_SECRET: ci-e2e-jwt-access-secret-min-16-chars
+          JWT_REFRESH_SECRET: ci-e2e-jwt-refresh-secret-min-16-chars
+          SMTP_HOST: smtp-relay.brevo.com
+          SMTP_PORT: '587'
+          SMTP_USER: ci-smtp-user
+          SMTP_PASSWORD: ci-smtp-password
+          SMTP_FROM: CakeCraft <no-reply@cakecraft.dev>
+        run: npm run test:e2e:api
+
+      - name: Testes de componentes e contraste WCAG 2.1 com cobertura (Web >= 25%)
+        run: npm run test:cov:web
+
+      - name: Build de producao (API NestJS + Web Next.js 16)
+        env:
+          NEXT_PUBLIC_API_URL: https://cakecraft-app.brazilsouth.cloudapp.azure.com/api
+        run: |
+          npm run build:api
+          npm run build:web
+
+      - name: Analise estatica de qualidade e seguranca (SonarCloud)
+        if: ${{ env.SONAR_TOKEN != '' }}
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  build-and-publish-images:
+    name: Build e Publicacao de Containers no GHCR
+    needs: quality-and-tests
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Autenticar no GitHub Container Registry (ghcr.io)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build e Push da imagem API Runner (cakecraft-api)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          target: runner
+          push: true
+          tags: |
+            ghcr.io/cmagnodutra/cakecraft-api:latest
+            ghcr.io/cmagnodutra/cakecraft-api:sha-${{ github.sha }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+
+      - name: Build e Push da imagem API Migrate (cakecraft-api-migrate)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          target: migrate
+          push: true
+          tags: |
+            ghcr.io/cmagnodutra/cakecraft-api-migrate:latest
+            ghcr.io/cmagnodutra/cakecraft-api-migrate:sha-${{ github.sha }}
+          cache-from: type=gha,scope=api
+
+      - name: Build e Push da imagem Web Next.js Standalone (cakecraft-web)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          push: true
+          build-args: |
+            NEXT_PUBLIC_API_URL=https://${{ vars.APP_DOMAIN || 'cakecraft-app.brazilsouth.cloudapp.azure.com' }}/api
+          tags: |
+            ghcr.io/cmagnodutra/cakecraft-web:latest
+            ghcr.io/cmagnodutra/cakecraft-web:sha-${{ github.sha }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+  deploy-azure:
+    name: Deploy Continuo Automatizado no Microsoft Azure
+    needs: build-and-publish-images
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout dos manifestos de producao
+        uses: actions/checkout@v4
+
+      - name: Sincronizar manifestos de infraestrutura com a VM Azure
+        if: ${{ env.AZURE_VM_HOST != '' }}
+        env:
+          AZURE_VM_HOST: ${{ secrets.AZURE_VM_HOST }}
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.AZURE_VM_HOST }}
+          username: ${{ secrets.AZURE_VM_USER || 'azureuser' }}
+          key: ${{ secrets.AZURE_VM_SSH_KEY }}
+          source: "docker-compose.prod.yml,infra/caddy/Caddyfile,infra/observability/*"
+          target: "/opt/cakecraft"
+
+      - name: Atualizar imagens GHCR, executar migracoes e validar saude na VM Azure
+        if: ${{ env.AZURE_VM_HOST != '' }}
+        env:
+          AZURE_VM_HOST: ${{ secrets.AZURE_VM_HOST }}
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.AZURE_VM_HOST }}
+          username: ${{ secrets.AZURE_VM_USER || 'azureuser' }}
+          key: ${{ secrets.AZURE_VM_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            cd /opt/cakecraft
+            export API_IMAGE=ghcr.io/cmagnodutra/cakecraft-api:sha-${{ github.sha }}
+            export API_MIGRATE_IMAGE=ghcr.io/cmagnodutra/cakecraft-api-migrate:sha-${{ github.sha }}
+            export WEB_IMAGE=ghcr.io/cmagnodutra/cakecraft-web:sha-${{ github.sha }}
+            docker compose --env-file .env.production -f docker-compose.prod.yml pull api migrate web
+            docker compose --env-file .env.production -f docker-compose.prod.yml up -d --remove-orphans
+            docker image prune -f
