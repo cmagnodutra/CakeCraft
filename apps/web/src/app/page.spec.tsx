@@ -42,11 +42,11 @@ describe('HomePage (landing)', () => {
     expect(cta).toHaveClass('bg-ink', 'text-on-ink', 'font-bold');
   });
 
-  it('nao tem nenhum link alem do botao de cadastro (nada leva a rota que nao existe)', () => {
+  it('apenas aponta para rotas existentes e funcionais (/cadastro e /builder)', () => {
     render(<HomePage />);
 
     const destinos = screen.getAllByRole('link').map((link) => link.getAttribute('href'));
-    expect(destinos).toEqual(['/cadastro']);
+    expect(destinos).toEqual(['/cadastro', '/builder']);
   });
 
   it('a pagina nao repete o titulo da marca como h1 (o cabecalho ja traz a marca)', () => {
