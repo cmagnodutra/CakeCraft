@@ -70,4 +70,45 @@ describe('EmailService', () => {
       expect(senderMock.send).toHaveBeenCalled();
     });
   });
+
+  describe('notificacoes de producao, gamificacao e cancelamento (UC02, UC04, Secao 3.2)', () => {
+    it('sendOrderReadyEmail notifica o cliente com o codigo curto do pedido e link para /meus-pedidos', async () => {
+      await service.sendOrderReadyEmail(
+        'mariana@example.com',
+        'Mariana <script>',
+        '12345678-aaaa-4bbb-8ccc-111111111111',
+      );
+
+      expect(senderMock.send).toHaveBeenCalledTimes(1);
+      const chamada = senderMock.send.mock.calls[0][0];
+      expect(chamada.to).toBe('mariana@example.com');
+      expect(chamada.subject).toContain('#12345678');
+      expect(chamada.html).toContain('Mariana &lt;script&gt;');
+      expect(chamada.html).toContain('http://localhost:3000/meus-pedidos');
+    });
+
+    it('sendLevelUpRewardEmail envia selo e recompensa de novo nivel do Clube CakeCraft (UC02)', async () => {
+      await service.sendLevelUpRewardEmail('mariana@example.com', 'Mariana', 2, 1150);
+
+      expect(senderMock.send).toHaveBeenCalledTimes(1);
+      const chamada = senderMock.send.mock.calls[0][0];
+      expect(chamada.to).toBe('mariana@example.com');
+      expect(chamada.subject).toContain('Nivel 2');
+      expect(chamada.html).toContain('1150 XP');
+    });
+
+    it('sendOrderCancelledByBakeryEmail informa cancelamento administrativo e estorno PIX', async () => {
+      await service.sendOrderCancelledByBakeryEmail(
+        'mariana@example.com',
+        'Mariana',
+        'abcdef12-0000-4000-8000-000000000000',
+      );
+
+      expect(senderMock.send).toHaveBeenCalledTimes(1);
+      const chamada = senderMock.send.mock.calls[0][0];
+      expect(chamada.to).toBe('mariana@example.com');
+      expect(chamada.subject).toContain('#abcdef12');
+      expect(chamada.html).toContain('estorno');
+    });
+  });
 });

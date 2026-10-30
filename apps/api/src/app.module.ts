@@ -7,12 +7,15 @@ import { AuthModule } from './auth/auth.module';
 import { CatalogModule } from './catalog/catalog.module';
 import { AppEnvironment, envValidationSchema } from './config/env.validation';
 import { EmailModule } from './email/email.module';
+import { GamificationModule } from './gamification/gamification.module';
 import { HealthModule } from './health/health.module';
+import { KanbanModule } from './kanban/kanban.module';
 import { OrdersModule } from './orders/orders.module';
 import { PaymentsModule } from './payments/payments.module';
 import { PricingModule } from './pricing/pricing.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
+import { ReportsModule } from './reports/reports.module';
 import { UploadsModule } from './uploads/uploads.module';
 
 @Module({
@@ -45,6 +48,9 @@ import { UploadsModule } from './uploads/uploads.module';
     UploadsModule,
     PaymentsModule,
     OrdersModule,
+    GamificationModule,
+    KanbanModule,
+    ReportsModule,
   ],
   providers: [
     {
