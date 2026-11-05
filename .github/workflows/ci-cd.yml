@@ -102,6 +102,8 @@ jobs:
       - name: Analise estatica de qualidade e seguranca (SonarCloud)
         if: ${{ env.SONAR_TOKEN != '' }}
         uses: SonarSource/sonarqube-scan-action@2f77a1ec69fb1d595b06f35ab27e97605bdef703 # v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   build-and-publish-images:
     name: Build e Publicacao de Containers no GHCR
