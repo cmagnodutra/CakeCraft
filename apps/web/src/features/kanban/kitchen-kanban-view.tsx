@@ -277,7 +277,6 @@ export function KitchenKanbanView() {
               if (!normalizedSearch) return true;
               const haystack = [
                 card.customerName,
-                card.customerEmail,
                 card.id,
                 card.toppingMessage ?? '',
               ]

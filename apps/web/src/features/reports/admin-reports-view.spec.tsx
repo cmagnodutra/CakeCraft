@@ -187,4 +187,27 @@ describe('AdminReportsView (/admin/relatorios - UC06, RF10)', () => {
     );
     expect(await screen.findByText(messages.adminReports.errors.exportFailed)).toBeInTheDocument();
   });
+
+  it('aplica atalhos rapidos de periodo contabil (Hoje e Ultimos 7 dias) com 1 clique', async () => {
+    fetchCurrentUserMock.mockResolvedValue(adminUser);
+    fetchFinancialReportMock
+      .mockResolvedValueOnce(sampleReport)
+      .mockResolvedValueOnce({ ...sampleReport, from: '2026-11-04', to: '2026-11-04' });
+
+    const user = userEvent.setup();
+
+    render(
+      <AuthProvider>
+        <AdminReportsView />
+      </AuthProvider>,
+    );
+
+    await screen.findByText(/R\$\s*480,00/);
+
+    await user.click(
+      screen.getByRole('button', { name: messages.adminReports.filterForm.presets.TODAY }),
+    );
+
+    await waitFor(() => expect(fetchFinancialReportMock).toHaveBeenCalledTimes(2));
+  });
 });
