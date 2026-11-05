@@ -41,7 +41,11 @@ export function normalizeApiBaseUrl(raw: string | undefined, isProduction: boole
     throw new Error(`${ENV_NAME} deve usar http ou https (recebido: "${url.protocol}").`);
   }
 
-  return value.replace(/\/+$/, '');
+  let normalized = value;
+  while (normalized.endsWith('/')) {
+    normalized = normalized.slice(0, -1);
+  }
+  return normalized;
 }
 
 /**

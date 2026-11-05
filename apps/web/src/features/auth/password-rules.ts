@@ -1,6 +1,6 @@
 // Regras compartilhadas entre cadastro, login e redefinicao de senha:
 // espelham RegisterDto, LoginDto e ResetPasswordDto do backend.
-export const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export const EMAIL_SHAPE = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/;
 export const MIN_PASSWORD_LENGTH = 8;
 export const MAX_PASSWORD_BYTES = 72;
 

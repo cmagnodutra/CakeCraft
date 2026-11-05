@@ -9,7 +9,7 @@ COPY apps/api/package.json ./apps/api/package.json
 COPY apps/web/package.json ./apps/web/package.json
 COPY apps/api/prisma ./apps/api/prisma
 
-RUN npm ci
+RUN npm ci --ignore-scripts && npm run prisma:generate -w @cakecraft/api
 
 COPY apps/api/tsconfig.json apps/api/tsconfig.build.json apps/api/nest-cli.json ./apps/api/
 COPY apps/api/src ./apps/api/src
@@ -20,7 +20,7 @@ RUN npm run build -w @cakecraft/api
 FROM builder AS migrate
 USER node
 WORKDIR /app/apps/api
-CMD ["npx", "prisma", "migrate", "deploy"]
+CMD ["npm", "run", "prisma:deploy"]
 
 # Estagio intermediario que remove devDependencies antes de montar a imagem final
 FROM builder AS pruned

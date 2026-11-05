@@ -116,7 +116,10 @@ export class AsaasPixGateway implements PixGatewayPort {
     path: string,
     options: { method: 'GET' | 'POST'; body?: unknown },
   ): Promise<T> {
-    const baseUrl = this.config.get('ASAAS_API_URL', { infer: true }).replace(/\/+$/, '');
+    let baseUrl = this.config.get('ASAAS_API_URL', { infer: true });
+    while (baseUrl.endsWith('/')) {
+      baseUrl = baseUrl.slice(0, -1);
+    }
     const apiKey = this.config.get('ASAAS_API_KEY', { infer: true });
 
     const headers: Record<string, string> = {

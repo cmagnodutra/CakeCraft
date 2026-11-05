@@ -5,6 +5,8 @@
  * testar RN01 manualmente (bloqueio em bolos de +2 andares) assim que o
  * builder ou uma chamada direta a /api/pricing/calculate usar esse id.
  */
+import { randomBytes } from 'node:crypto';
+
 import { PrismaClient, IngredientType, Role } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
@@ -12,16 +14,16 @@ const prisma = new PrismaClient();
 
 async function main() {
   const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS ?? 12);
-  const envAdminPassword = process.env.ADMIN_SEED_PASSWORD?.trim();
+  const envAdminSecret = process.env.ADMIN_SEED_PASSWORD?.trim();
 
-  if (process.env.NODE_ENV === 'production' && (!envAdminPassword || envAdminPassword.length < 12)) {
+  if (process.env.NODE_ENV === 'production' && (!envAdminSecret || envAdminSecret.length < 12)) {
     throw new Error(
       'ADMIN_SEED_PASSWORD com ao menos 12 caracteres e obrigatoria para executar o seed em producao.',
     );
   }
 
-  const rawAdminPassword = envAdminPassword || 'troque-esta-senha';
-  const adminPasswordHash = await bcrypt.hash(rawAdminPassword, saltRounds);
+  const rawAdminSecret = envAdminSecret || randomBytes(16).toString('hex');
+  const adminPasswordHash = await bcrypt.hash(rawAdminSecret, saltRounds);
 
   await prisma.user.upsert({
     where: { email: 'admin@cakecraft.com.br' },

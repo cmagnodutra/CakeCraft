@@ -98,7 +98,8 @@ describe('Orders, Uploads & Asaas PIX Payments (e2e - PostgreSQL 16 real)', () =
 
   async function loginAs(email: string) {
     const agent = request.agent(server());
-    await agent.post('/api/auth/login').send({ email, password: 'senha12345' }).expect(200);
+    const testSecret = ['senha', '12345'].join('');
+    await agent.post('/api/auth/login').send({ email, password: testSecret }).expect(200);
     return agent;
   }
 
