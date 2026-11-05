@@ -205,6 +205,10 @@ describe('CakeBuilderView (UC01, RF02-RF07, RN01-RN02)', () => {
     );
 
     await screen.findByText(/R\$\s*239,50/);
+    expect(
+      screen.getByText(messages.builder.quoteSection.totalWeightLabel),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/~15 fatias de 100g/)).toBeInTheDocument();
 
     // Marca restricao "Sem lactose / leite": Brigadeiro Belga e Chantilly contem 'leite'
     await user.click(screen.getByLabelText(messages.builder.dietarySection.options.lactose));
@@ -263,6 +267,10 @@ describe('CakeBuilderView (UC01, RF02-RF07, RN01-RN02)', () => {
     );
 
     await screen.findByText(/R\$\s*239,50/);
+    expect(
+      screen.getByText(messages.builder.quoteSection.totalWeightLabel),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/~15 fatias de 100g/)).toBeInTheDocument();
 
     await user.type(
       screen.getByLabelText(messages.builder.personalizationSection.toppingMessageLabel),
@@ -332,6 +340,10 @@ describe('CakeBuilderView (UC01, RF02-RF07, RN01-RN02)', () => {
     );
 
     await screen.findByText(/R\$\s*239,50/);
+    expect(
+      screen.getByText(messages.builder.quoteSection.totalWeightLabel),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/~15 fatias de 100g/)).toBeInTheDocument();
 
     const fileInput = screen.getByLabelText(messages.builder.personalizationSection.ricePaperLabel);
     await user.upload(fileInput, new File(['bad'], 'fake.png', { type: 'image/png' }));

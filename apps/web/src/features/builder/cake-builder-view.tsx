@@ -930,6 +930,23 @@ export function CakeBuilderView() {
                 ))}
 
                 <div className="flex items-center justify-between gap-3 border-t border-line pt-2.5 text-ink-muted">
+                  <dt>{texts.quoteSection.totalWeightLabel}</dt>
+                  <dd className="font-medium text-ink">
+                    {(() => {
+                      const totalWeightKg = currentQuote.layers.reduce(
+                        (acc, layer) => acc + layer.weightKg,
+                        0,
+                      );
+                      const estimatedSlices = Math.max(1, Math.round(totalWeightKg * 10));
+                      return texts.quoteSection.servingsEstimate(
+                        totalWeightKg.toLocaleString('pt-BR', { maximumFractionDigits: 2 }),
+                        estimatedSlices,
+                      );
+                    })()}
+                  </dd>
+                </div>
+
+                <div className="flex items-center justify-between gap-3 border-t border-line pt-2.5 text-ink-muted">
                   <dt>{texts.quoteSection.assemblyFee}</dt>
                   <dd className="font-medium text-ink">
                     {brlFormatter.format(currentQuote.assemblyBaseFee)}
