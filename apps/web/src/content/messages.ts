@@ -368,6 +368,9 @@ export const messages = {
       calculating: 'Atualizando orçamento...',
       floorItem: (floorNumber: number, weightFormatted: string) =>
         `${floorNumber}º andar (${weightFormatted} kg)`,
+      totalWeightLabel: 'Peso total e rendimento estimado',
+      servingsEstimate: (weightFormatted: string, slices: number) =>
+        `${weightFormatted} kg (~${slices} fatias de 100g)`,
       assemblyFee: 'Taxa base de montagem artesanal',
       total: 'Total do pedido',
       pixNotice: 'Pagamento via PIX (Asaas) com QR Code válido por 15 minutos após confirmar.',
