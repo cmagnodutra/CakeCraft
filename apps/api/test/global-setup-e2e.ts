@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 
 import { resolveE2eDatabaseUrl } from './e2e-env';
@@ -12,8 +12,9 @@ import { resolveE2eDatabaseUrl } from './e2e-env';
 export default function globalSetupE2e(): void {
   const apiRoot = resolve(__dirname, '..');
   const e2eDatabaseUrl = resolveE2eDatabaseUrl();
+  const prismaCli = require.resolve('prisma/build/index.js');
 
-  execSync('npx prisma migrate deploy', {
+  execFileSync(process.execPath, [prismaCli, 'migrate', 'deploy'], {
     cwd: apiRoot,
     env: {
       ...process.env,

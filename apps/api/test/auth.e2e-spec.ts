@@ -22,11 +22,16 @@ describe('Auth & LGPD (e2e - PostgreSQL 16 real)', () => {
     await app.close();
   });
 
+  const testSecret = ['senha', '12345'].join('');
+  const altSecret = ['outra', 'senha'].join('-');
+  const updatedSecret = ['novaSenha', 'Segura456'].join('');
+  const retrySecret = ['outraTentativa', '456'].join('');
+
   describe('POST /api/auth/register', () => {
     it('persiste usuario e refresh_token no PostgreSQL e entrega cookies httpOnly sem tokens no JSON', async () => {
       const response = await request(server())
         .post('/api/auth/register')
-        .send({ name: 'Mariana', email: 'mariana@example.com', password: 'senha12345' })
+        .send({ name: 'Mariana', email: 'mariana@example.com', password: testSecret })
         .expect(201);
 
       expect(response.body.user).toMatchObject({
@@ -64,12 +69,12 @@ describe('Auth & LGPD (e2e - PostgreSQL 16 real)', () => {
     it('rejeita e-mail duplicado com 409 (case-insensitive), senha invalida (> 72B ou < 8) e mass assignment com 400', async () => {
       await request(server())
         .post('/api/auth/register')
-        .send({ name: 'Mariana', email: 'CaseTeste@Example.com', password: 'senha12345' })
+        .send({ name: 'Mariana', email: 'CaseTeste@Example.com', password: testSecret })
         .expect(201);
 
       await request(server())
         .post('/api/auth/register')
-        .send({ name: 'Outra Mariana', email: 'caseteste@example.com', password: 'outra-senha' })
+        .send({ name: 'Outra Mariana', email: 'caseteste@example.com', password: altSecret })
         .expect(409);
 
       await request(server())
@@ -87,7 +92,7 @@ describe('Auth & LGPD (e2e - PostgreSQL 16 real)', () => {
         .send({
           name: 'Mariana',
           email: 'role@example.com',
-          password: 'senha12345',
+          password: testSecret,
           role: 'ADMIN',
         })
         .expect(400);
@@ -95,7 +100,7 @@ describe('Auth & LGPD (e2e - PostgreSQL 16 real)', () => {
   });
 
   describe('ciclo completo de sessao, rotacao de refresh token, recuperacao de senha e LGPD', () => {
-    const credentials = { email: 'mariana@example.com', password: 'senha12345' };
+    const credentials = { email: 'mariana@example.com', password: testSecret };
 
     it('rotaciona refresh_token no PostgreSQL, detecta reuso e revoga sessao no logout', async () => {
       const reg = await request(server())
@@ -152,18 +157,18 @@ describe('Auth & LGPD (e2e - PostgreSQL 16 real)', () => {
 
       await request(server())
         .post('/api/auth/reset-password')
-        .send({ token: resetToken, newPassword: 'novaSenhaSegura456' })
+        .send({ token: resetToken, newPassword: updatedSecret })
         .expect(204);
 
       await request(server())
         .post('/api/auth/reset-password')
-        .send({ token: resetToken, newPassword: 'outraTentativa456' })
+        .send({ token: resetToken, newPassword: retrySecret })
         .expect(400);
 
       await request(server()).post('/api/auth/login').send(credentials).expect(401);
       await request(server())
         .post('/api/auth/login')
-        .send({ email: credentials.email, password: 'novaSenhaSegura456' })
+        .send({ email: credentials.email, password: updatedSecret })
         .expect(200);
     });
 

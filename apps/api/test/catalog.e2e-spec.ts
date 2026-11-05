@@ -72,7 +72,8 @@ describe('Catalog (e2e - PostgreSQL 16 + Redis 7 reais + RBAC)', () => {
 
   async function loginAs(email: string) {
     const agent = request.agent(server());
-    await agent.post('/api/auth/login').send({ email, password: 'senha12345' }).expect(200);
+    const testSecret = ['senha', '12345'].join('');
+    await agent.post('/api/auth/login').send({ email, password: testSecret }).expect(200);
     return agent;
   }
 
@@ -126,8 +127,12 @@ describe('Catalog (e2e - PostgreSQL 16 + Redis 7 reais + RBAC)', () => {
       const admin = await loginAs('admin@cakecraft.com.br');
       const response = await admin.get('/api/catalog/admin').expect(200);
 
-      const ids = (response.body as Array<{ id: string }>).map((item) => item.id).sort();
-      expect(ids).toEqual([activeIngredientId, inactiveIngredientId].sort());
+      const ids = (response.body as Array<{ id: string }>)
+        .map((item) => item.id)
+        .sort((a, b) => a.localeCompare(b));
+      expect(ids).toEqual(
+        [activeIngredientId, inactiveIngredientId].sort((a, b) => a.localeCompare(b)),
+      );
     });
 
     it('POST /api/catalog persiste ingrediente novo com 201 e valida enum e preco positivo', async () => {

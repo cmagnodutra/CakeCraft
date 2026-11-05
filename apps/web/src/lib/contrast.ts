@@ -18,7 +18,9 @@ export function relativeLuminance(hex: string): number {
     throw new Error(`Cor invalida "${hex}": use o formato #rrggbb.`);
   }
 
-  const [r, g, b] = [match[1], match[2], match[3]].map((part) => linearize(parseInt(part, 16)));
+  const [r, g, b] = [match[1], match[2], match[3]].map((part) =>
+    linearize(Number.parseInt(part, 16)),
+  );
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 

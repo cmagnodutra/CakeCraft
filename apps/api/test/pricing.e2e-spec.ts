@@ -115,9 +115,9 @@ describe('Pricing (e2e - PostgreSQL 16 real)', () => {
         .send({ floors: [aeratedFloor(1, 1.005)] })
         .expect(200);
 
-      // 10.00 (Pao de Lo) + 7.00 (Chantilly) = 17.00 * 1.005 kg = 17.085 -> 17.09
-      expect(response.body.layers[0].subtotal).toBe(17.09);
-      expect(response.body.totalPrice).toBe(42.09);
+      // 10.00 (Pao de Lo) + 7.00 (Chantilly) = 17.00 * 1.005 kg = 17.085 -> 17.09 (1709 centavos)
+      expect(Math.round(Number(response.body.layers[0].subtotal) * 100)).toBe(1709);
+      expect(Math.round(Number(response.body.totalPrice) * 100)).toBe(4209);
     });
 
     it('RN01 - permite massa aerada em 2 andares (200) e bloqueia em 3 andares (422)', async () => {

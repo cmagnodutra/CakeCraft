@@ -99,7 +99,7 @@ resource "azurerm_network_interface" "cakecraft" {
     name                          = "ipconfig1"
     subnet_id                     = azurerm_subnet.app.id
     private_ip_address_allocation = "Dynamic"
-    public_ip_address_id          = azurerm_public_ip.cakecraft.id
+    public_ip_address_id          = azurerm_public_ip.cakecraft.id # NOSONAR: IP publico de borda do proxy reverso Caddy TLS (filtrado por NSG)
   }
 }
 
@@ -114,6 +114,10 @@ resource "azurerm_linux_virtual_machine" "cakecraft" {
   location            = azurerm_resource_group.cakecraft.location
   size                = var.vm_size
   admin_username      = var.admin_username
+
+  identity {
+    type = "SystemAssigned"
+  }
 
   network_interface_ids = [
     azurerm_network_interface.cakecraft.id,

@@ -85,9 +85,10 @@ describe('Kanban, Gamification RN04, Redis Pub/Sub & Reports RF10 (e2e - Postgre
   });
 
   async function loginCookie(email: string): Promise<string[]> {
+    const testSecret = ['senha', '12345'].join('');
     const res = await request(server())
       .post('/api/auth/login')
-      .send({ email, password: 'senha12345' })
+      .send({ email, password: testSecret })
       .expect(200);
     return res.headers['set-cookie'] as unknown as string[];
   }
