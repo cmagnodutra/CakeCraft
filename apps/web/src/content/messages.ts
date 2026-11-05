@@ -466,6 +466,14 @@ export const messages = {
     backHome: 'Voltar ao início',
     liveBadge: 'Sincronizado em tempo real',
     refreshButton: 'Atualizar fila',
+    searchPlaceholder: 'Buscar por cliente, código (#id) ou frase do topo...',
+    searchAriaLabel: 'Buscar pedidos na cozinha',
+    modalityFilterLabel: 'Modalidade:',
+    modalities: {
+      ALL: 'Todos',
+      DELIVERY: 'Com endereço / entrega',
+      PICKUP: 'Retirada no balcão',
+    },
     columns: {
       EM_ESPERA: 'Em espera',
       EM_PRODUCAO: 'Em produção',

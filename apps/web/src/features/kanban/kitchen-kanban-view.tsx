@@ -40,6 +40,8 @@ export function KitchenKanbanView() {
   const [refreshing, setRefreshing] = useState(false);
   const [errorBanner, setErrorBanner] = useState<string>();
   const [feedbackBanner, setFeedbackBanner] = useState<string>();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [modalityFilter, setModalityFilter] = useState<'ALL' | 'DELIVERY' | 'PICKUP'>('ALL');
 
   const isAdmin = user?.role === 'ADMIN';
   const initialLoading = isAdmin && cards === null && !errorBanner;
@@ -224,6 +226,41 @@ export function KitchenKanbanView() {
       {errorBanner && <Alert variant="error" className="mt-6" messages={[errorBanner]} />}
       {feedbackBanner && <Alert variant="success" className="mt-6" messages={[feedbackBanner]} />}
 
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-control border border-line bg-surface p-4">
+        <div className="min-w-[240px] flex-1">
+          <input
+            type="search"
+            aria-label={texts.searchAriaLabel}
+            placeholder={texts.searchPlaceholder}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-10 w-full rounded-control border border-line-strong bg-surface px-3 text-sm text-ink"
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium text-ink-muted">{texts.modalityFilterLabel}</span>
+          {(['ALL', 'DELIVERY', 'PICKUP'] as const).map((mode) => {
+            const active = modalityFilter === mode;
+            return (
+              <button
+                key={mode}
+                type="button"
+                aria-pressed={active}
+                onClick={() => setModalityFilter(mode)}
+                className={`h-9 rounded-control border px-3 text-xs font-medium transition-colors ${
+                  active
+                    ? 'border-ink bg-sand-100 font-bold text-ink'
+                    : 'border-line-strong bg-surface text-ink hover:bg-sand-100'
+                }`}
+              >
+                {texts.modalities[mode]}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {initialLoading ? (
         <p role="status" className="mt-8 text-ink-muted">
           {texts.loadingMessage}
@@ -231,7 +268,23 @@ export function KitchenKanbanView() {
       ) : (
         <div className="mt-8 grid gap-5 lg:grid-cols-4 lg:items-start">
           {BOARD_COLUMNS.map((colStatus) => {
-            const colCards = (cards ?? []).filter((card) => card.status === colStatus);
+            const normalizedSearch = searchQuery.trim().toLowerCase();
+            const colCards = (cards ?? []).filter((card) => {
+              if (card.status !== colStatus) return false;
+              const hasAddress = Boolean(card.deliveryAddress?.trim());
+              if (modalityFilter === 'DELIVERY' && !hasAddress) return false;
+              if (modalityFilter === 'PICKUP' && hasAddress) return false;
+              if (!normalizedSearch) return true;
+              const haystack = [
+                card.customerName,
+                card.customerEmail,
+                card.id,
+                card.toppingMessage ?? '',
+              ]
+                .join(' ')
+                .toLowerCase();
+              return haystack.includes(normalizedSearch);
+            });
 
             return (
               <section
