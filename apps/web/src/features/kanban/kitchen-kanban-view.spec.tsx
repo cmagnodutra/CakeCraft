@@ -230,4 +230,44 @@ describe('KitchenKanbanView (/admin/producao - UC04, RF08)', () => {
     );
     expect(await screen.findByText(messages.adminKanban.errors.network)).toBeInTheDocument();
   });
+
+  it('filtra pedidos da cozinha por busca textual e por modalidade (entrega vs retirada)', async () => {
+    const deliveryCard = makeCard({
+      id: '11111111-aaaa-4bbb-8ccc-111111111111',
+      customerName: 'Mariana Costa',
+      deliveryAddress: 'Rua das Flores, 42',
+    });
+    const pickupCard = makeCard({
+      id: '22222222-aaaa-4bbb-8ccc-222222222222',
+      customerName: 'Carlos Eduardo',
+      deliveryAddress: null,
+    });
+
+    fetchCurrentUserMock.mockResolvedValue(adminUser);
+    fetchKanbanOrdersMock.mockResolvedValueOnce([deliveryCard, pickupCard]);
+    const user = userEvent.setup();
+
+    render(
+      <AuthProvider>
+        <KitchenKanbanView />
+      </AuthProvider>,
+    );
+
+    await screen.findByText('#11111111');
+    expect(screen.getByText('#22222222')).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('button', { name: messages.adminKanban.modalities.PICKUP }),
+    );
+    expect(screen.queryByText('#11111111')).not.toBeInTheDocument();
+    expect(screen.getByText('#22222222')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: messages.adminKanban.modalities.ALL }));
+    const searchInput = screen.getByRole('searchbox', {
+      name: messages.adminKanban.searchAriaLabel,
+    });
+    await user.type(searchInput, 'Mariana');
+    expect(screen.getByText('#11111111')).toBeInTheDocument();
+    expect(screen.queryByText('#22222222')).not.toBeInTheDocument();
+  });
 });
