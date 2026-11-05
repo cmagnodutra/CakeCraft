@@ -531,6 +531,13 @@ export const messages = {
       toLabel: 'Data final',
       applyButton: 'Aplicar período',
       exportCsvButton: 'Exportar CSV',
+      presetsLabel: 'Atalhos rápidos:',
+      presets: {
+        TODAY: 'Hoje',
+        LAST_7_DAYS: 'Últimos 7 dias',
+        LAST_30_DAYS: 'Últimos 30 dias',
+        CURRENT_MONTH: 'Mês atual',
+      },
     },
     kpis: {
       totalRevenue: 'Receita confirmada (PIX)',

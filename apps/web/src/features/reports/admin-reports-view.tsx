@@ -138,6 +138,41 @@ export function AdminReportsView() {
     }
   }
 
+  async function handleQuickPreset(preset: 'TODAY' | 'LAST_7_DAYS' | 'LAST_30_DAYS' | 'CURRENT_MONTH') {
+    const now = new Date();
+    const toStr = now.toISOString().slice(0, 10);
+    let fromStr = toStr;
+
+    if (preset === 'LAST_7_DAYS') {
+      const d = new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000);
+      fromStr = d.toISOString().slice(0, 10);
+    } else if (preset === 'LAST_30_DAYS') {
+      const d = new Date(now.getTime() - 29 * 24 * 60 * 60 * 1000);
+      fromStr = d.toISOString().slice(0, 10);
+    } else if (preset === 'CURRENT_MONTH') {
+      fromStr = `${toStr.slice(0, 7)}-01`;
+    }
+
+    setFromDate(fromStr);
+    setToDate(toStr);
+    setFiltering(true);
+    setErrorBanner(undefined);
+    setFeedbackBanner(undefined);
+
+    try {
+      const loaded = await fetchFinancialReport({ from: fromStr, to: toStr });
+      setReport(loaded);
+      setFromDate(loaded.from);
+      setToDate(loaded.to);
+    } catch (error) {
+      setErrorBanner(
+        error instanceof NetworkError ? texts.errors.network : texts.errors.loadFailed,
+      );
+    } finally {
+      setFiltering(false);
+    }
+  }
+
   async function handleExportCsv() {
     setExporting(true);
     setErrorBanner(undefined);
@@ -184,40 +219,61 @@ export function AdminReportsView() {
         onSubmit={(event) => {
           void handleApplyFilter(event);
         }}
-        className="mt-8 flex flex-wrap items-end gap-4 rounded-control border border-line bg-surface p-5"
+        className="mt-8 space-y-4 rounded-control border border-line bg-surface p-5"
       >
-        <div className="min-w-44 flex-1">
-          <Field
-            label={texts.filterForm.fromLabel}
-            type="date"
-            value={fromDate}
-            onChange={(e) => setFromDate(e.target.value)}
-          />
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium text-ink-muted">
+            {texts.filterForm.presetsLabel}
+          </span>
+          {(['TODAY', 'LAST_7_DAYS', 'LAST_30_DAYS', 'CURRENT_MONTH'] as const).map((preset) => (
+            <button
+              key={preset}
+              type="button"
+              disabled={filtering}
+              onClick={() => {
+                void handleQuickPreset(preset);
+              }}
+              className="h-8 rounded-control border border-line-strong bg-surface px-3 text-xs font-medium text-ink transition-colors hover:bg-sand-100 disabled:opacity-50"
+            >
+              {texts.filterForm.presets[preset]}
+            </button>
+          ))}
         </div>
 
-        <div className="min-w-44 flex-1">
-          <Field
-            label={texts.filterForm.toLabel}
-            type="date"
-            value={toDate}
-            onChange={(e) => setToDate(e.target.value)}
-          />
-        </div>
+        <div className="flex flex-wrap items-end gap-4">
+          <div className="min-w-44 flex-1">
+            <Field
+              label={texts.filterForm.fromLabel}
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+            />
+          </div>
 
-        <div className="flex flex-wrap gap-2.5">
-          <Button type="submit" variant="secondary" loading={filtering}>
-            {texts.filterForm.applyButton}
-          </Button>
-          <Button
-            type="button"
-            variant="primary"
-            loading={exporting}
-            onClick={() => {
-              void handleExportCsv();
-            }}
-          >
-            {texts.filterForm.exportCsvButton}
-          </Button>
+          <div className="min-w-44 flex-1">
+            <Field
+              label={texts.filterForm.toLabel}
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+            />
+          </div>
+
+          <div className="flex flex-wrap gap-2.5">
+            <Button type="submit" variant="secondary" loading={filtering}>
+              {texts.filterForm.applyButton}
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              loading={exporting}
+              onClick={() => {
+                void handleExportCsv();
+              }}
+            >
+              {texts.filterForm.exportCsvButton}
+            </Button>
+          </div>
         </div>
       </form>
 
