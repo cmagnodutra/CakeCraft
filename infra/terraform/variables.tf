@@ -22,9 +22,9 @@ variable "location" {
 }
 
 variable "vm_size" {
-  description = "SKU elegivel as 750h gratuitas do Azure for Students (2 vCPU, 1 GiB RAM + swap de 2 GiB via cloud-init)"
+  description = "SKU liberada em brazilsouth na assinatura Azure (2 vCPU, 4 GiB RAM + swap de 2 GiB via cloud-init)"
   type        = string
-  default     = "Standard_B2ats_v2"
+  default     = "Standard_D2als_v7"
 }
 
 variable "admin_username" {
