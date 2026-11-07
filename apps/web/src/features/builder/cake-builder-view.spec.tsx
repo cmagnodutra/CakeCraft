@@ -7,11 +7,7 @@ import { fetchCurrentUser } from '@/lib/api/auth';
 import { fetchPublicCatalog } from '@/lib/api/catalog';
 import type { CatalogIngredient } from '@/lib/api/catalog';
 import { ApiError, NetworkError } from '@/lib/api/errors';
-import {
-  calculateCakePrice,
-  createOrder,
-  uploadRicePaperImage,
-} from '@/lib/api/orders';
+import { calculateCakePrice, createOrder, uploadRicePaperImage } from '@/lib/api/orders';
 import type { CustomerOrder } from '@/lib/api/orders';
 
 import { BUILDER_DRAFT_STORAGE_KEY, CakeBuilderView } from './cake-builder-view';
@@ -205,9 +201,7 @@ describe('CakeBuilderView (UC01, RF02-RF07, RN01-RN02)', () => {
     );
 
     await screen.findByText(/R\$\s*239,50/);
-    expect(
-      screen.getByText(messages.builder.quoteSection.totalWeightLabel),
-    ).toBeInTheDocument();
+    expect(screen.getByText(messages.builder.quoteSection.totalWeightLabel)).toBeInTheDocument();
     expect(screen.getByText(/~15 fatias de 100g/)).toBeInTheDocument();
 
     // Marca restricao "Sem lactose / leite": Brigadeiro Belga e Chantilly contem 'leite'
@@ -267,9 +261,7 @@ describe('CakeBuilderView (UC01, RF02-RF07, RN01-RN02)', () => {
     );
 
     await screen.findByText(/R\$\s*239,50/);
-    expect(
-      screen.getByText(messages.builder.quoteSection.totalWeightLabel),
-    ).toBeInTheDocument();
+    expect(screen.getByText(messages.builder.quoteSection.totalWeightLabel)).toBeInTheDocument();
     expect(screen.getByText(/~15 fatias de 100g/)).toBeInTheDocument();
 
     await user.type(
@@ -340,9 +332,7 @@ describe('CakeBuilderView (UC01, RF02-RF07, RN01-RN02)', () => {
     );
 
     await screen.findByText(/R\$\s*239,50/);
-    expect(
-      screen.getByText(messages.builder.quoteSection.totalWeightLabel),
-    ).toBeInTheDocument();
+    expect(screen.getByText(messages.builder.quoteSection.totalWeightLabel)).toBeInTheDocument();
     expect(screen.getByText(/~15 fatias de 100g/)).toBeInTheDocument();
 
     const fileInput = screen.getByLabelText(messages.builder.personalizationSection.ricePaperLabel);
@@ -353,5 +343,44 @@ describe('CakeBuilderView (UC01, RF02-RF07, RN01-RN02)', () => {
       screen.getByRole('button', { name: messages.builder.quoteSection.submitOrder }),
     );
     expect(await screen.findByText(messages.builder.errors.orderFailed)).toBeInTheDocument();
+  });
+
+  it('permite apagar o peso com Backspace para digitar valores como 0.8 e aplica limites ao sair do campo', async () => {
+    fetchCurrentUserMock.mockResolvedValue({
+      id: 'u1',
+      name: 'Mariana',
+      email: 'mariana@example.com',
+      role: 'CLIENTE',
+      xp: 0,
+      level: 1,
+    });
+    const user = userEvent.setup();
+
+    render(
+      <AuthProvider>
+        <CakeBuilderView />
+      </AuthProvider>,
+    );
+
+    const weightInput = await screen.findByLabelText<HTMLInputElement>(
+      messages.builder.floorsSection.weightLabel,
+    );
+
+    await user.clear(weightInput);
+    expect(weightInput.value).toBe('');
+
+    await user.type(weightInput, '0.8');
+    expect(weightInput.value).toBe('0.8');
+
+    await waitFor(() =>
+      expect(calculateCakePriceMock).toHaveBeenLastCalledWith([
+        expect.objectContaining({ floorNumber: 1, estimatedWeightKg: 0.8 }),
+      ]),
+    );
+
+    await user.clear(weightInput);
+    await user.type(weightInput, '0.2');
+    await user.tab();
+    expect(weightInput.value).toBe('0.5');
   });
 });
