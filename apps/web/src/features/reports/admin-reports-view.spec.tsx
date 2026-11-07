@@ -5,10 +5,7 @@ import { messages } from '@/content/messages';
 import { AuthProvider } from '@/features/auth/auth-provider';
 import { fetchCurrentUser } from '@/lib/api/auth';
 import { ApiError, NetworkError } from '@/lib/api/errors';
-import {
-  downloadFinancialCsvText,
-  fetchFinancialReport,
-} from '@/lib/api/kanban-reports';
+import { downloadFinancialCsvText, fetchFinancialReport } from '@/lib/api/kanban-reports';
 import type { FinancialReport } from '@/lib/api/kanban-reports';
 
 import { AdminReportsView } from './admin-reports-view';
@@ -151,9 +148,7 @@ describe('AdminReportsView (/admin/relatorios - UC06, RF10)', () => {
       }),
     );
     expect(clickAnchorSpy).toHaveBeenCalledTimes(1);
-    expect(
-      await screen.findByText(messages.adminReports.feedback.csvExported),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(messages.adminReports.feedback.csvExported)).toBeInTheDocument();
 
     clickAnchorSpy.mockRestore();
   });
@@ -209,5 +204,45 @@ describe('AdminReportsView (/admin/relatorios - UC06, RF10)', () => {
     );
 
     await waitFor(() => expect(fetchFinancialReportMock).toHaveBeenCalledTimes(2));
+  });
+
+  it('avisa quando a data inicial e maior que a data final sem chamar a API', async () => {
+    fetchCurrentUserMock.mockResolvedValue(adminUser);
+    fetchFinancialReportMock.mockResolvedValueOnce(sampleReport);
+
+    const user = userEvent.setup();
+
+    render(
+      <AuthProvider>
+        <AdminReportsView />
+      </AuthProvider>,
+    );
+
+    await screen.findByText(/R\$\s*480,00/);
+
+    const fromInput = screen.getByLabelText(messages.adminReports.filterForm.fromLabel);
+    const toInput = screen.getByLabelText(messages.adminReports.filterForm.toLabel);
+
+    await user.clear(fromInput);
+    await user.type(fromInput, '2026-10-28');
+    await user.clear(toInput);
+    await user.type(toInput, '2026-10-10');
+
+    await user.click(
+      screen.getByRole('button', { name: messages.adminReports.filterForm.applyButton }),
+    );
+
+    expect(
+      await screen.findByText(messages.adminReports.errors.invalidDateRange),
+    ).toBeInTheDocument();
+    expect(fetchFinancialReportMock).toHaveBeenCalledTimes(1);
+
+    await user.click(
+      screen.getByRole('button', { name: messages.adminReports.filterForm.exportCsvButton }),
+    );
+    expect(
+      await screen.findByText(messages.adminReports.errors.invalidDateRange),
+    ).toBeInTheDocument();
+    expect(downloadFinancialCsvTextMock).not.toHaveBeenCalled();
   });
 });
