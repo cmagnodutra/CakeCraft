@@ -383,4 +383,50 @@ describe('CakeBuilderView (UC01, RF02-RF07, RN01-RN02)', () => {
     await user.tab();
     expect(weightInput.value).toBe('0.5');
   });
+
+  it('permite desmarcar o unico recheio selecionado, orienta a escolha e recalcula ao marcar outro', async () => {
+    fetchCurrentUserMock.mockResolvedValue({
+      id: 'u1',
+      name: 'Mariana',
+      email: 'mariana@example.com',
+      role: 'CLIENTE',
+      xp: 0,
+      level: 1,
+    });
+    const user = userEvent.setup();
+
+    render(
+      <AuthProvider>
+        <CakeBuilderView />
+      </AuthProvider>,
+    );
+
+    await screen.findByText(/R\$\s*239,50/);
+
+    const brigadeiroCheckbox = screen.getByLabelText<HTMLInputElement>(/Brigadeiro Belga/);
+    const frutasCheckbox = screen.getByLabelText<HTMLInputElement>(/Redução de Frutas Vermelhas/);
+
+    expect(brigadeiroCheckbox.checked).toBe(true);
+
+    await user.click(brigadeiroCheckbox);
+    expect(brigadeiroCheckbox.checked).toBe(false);
+    expect(
+      await screen.findByText(messages.builder.floorsSection.fillingsCountError),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: messages.builder.quoteSection.submitOrder }),
+    ).toBeDisabled();
+
+    await user.click(frutasCheckbox);
+    expect(frutasCheckbox.checked).toBe(true);
+
+    await waitFor(() =>
+      expect(calculateCakePriceMock).toHaveBeenLastCalledWith([
+        expect.objectContaining({
+          floorNumber: 1,
+          fillingIngredientIds: ['recheio-frutas'],
+        }),
+      ]),
+    );
+  });
 });
