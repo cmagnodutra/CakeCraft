@@ -109,7 +109,7 @@ function readDraftFromSession(catalog: CatalogIngredient[]): BuilderDraft | null
         activeIds.has(f.doughIngredientId) &&
         activeIds.has(f.coverageIngredientId) &&
         Array.isArray(f.fillingIngredientIds) &&
-        f.fillingIngredientIds.length >= 1 &&
+        f.fillingIngredientIds.length <= 2 &&
         f.fillingIngredientIds.every((id) => activeIds.has(id)),
     );
     if (!allValid) return null;
@@ -197,6 +197,17 @@ function findCompatibleSubstitute(
   });
 }
 
+function isFloorCompleteForQuote(floor: CakeFloorInput): boolean {
+  return (
+    Boolean(floor.doughIngredientId) &&
+    Boolean(floor.coverageIngredientId) &&
+    floor.fillingIngredientIds.length >= 1 &&
+    floor.fillingIngredientIds.length <= 2 &&
+    floor.estimatedWeightKg >= 0.5 &&
+    floor.estimatedWeightKg <= 20
+  );
+}
+
 export function CakeBuilderView() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
@@ -253,15 +264,7 @@ export function CakeBuilderView() {
       return;
     }
 
-    const everyFloorValid = draft.floors.every(
-      (f) =>
-        f.doughIngredientId &&
-        f.coverageIngredientId &&
-        f.fillingIngredientIds.length >= 1 &&
-        f.fillingIngredientIds.length <= 2 &&
-        f.estimatedWeightKg >= 0.5 &&
-        f.estimatedWeightKg <= 20,
-    );
+    const everyFloorValid = draft.floors.every(isFloorCompleteForQuote);
     if (!everyFloorValid) {
       return;
     }
@@ -372,8 +375,13 @@ export function CakeBuilderView() {
     return Number.isNaN(parsed) || parsed < 0.5 || parsed > 20;
   });
 
-  const isQuoteLoading = quoteState.key !== floorsSignature;
-  const currentQuote = quoteState.key === floorsSignature ? quoteState.quote : null;
+  const hasMissingFillings = draft.floors.some(
+    (floor) => floor.fillingIngredientIds.length < 1 || floor.fillingIngredientIds.length > 2,
+  );
+  const canCalculateQuote = draft.floors.every(isFloorCompleteForQuote);
+  const isQuoteLoading = canCalculateQuote && quoteState.key !== floorsSignature;
+  const currentQuote =
+    canCalculateQuote && quoteState.key === floorsSignature ? quoteState.quote : null;
 
   function updateDraft(updater: (prev: BuilderDraft) => BuilderDraft) {
     setActionError(undefined);
@@ -468,9 +476,6 @@ export function CakeBuilderView() {
         if (floor.floorNumber !== floorNumber) return floor;
         const exists = floor.fillingIngredientIds.includes(fillingId);
         if (exists) {
-          if (floor.fillingIngredientIds.length <= 1) {
-            return floor;
-          }
           return {
             ...floor,
             fillingIngredientIds: floor.fillingIngredientIds.filter((id) => id !== fillingId),
@@ -541,6 +546,7 @@ export function CakeBuilderView() {
       !user ||
       dietaryConflicts.length > 0 ||
       hasAeratedViolation ||
+      hasMissingFillings ||
       hasPendingInvalidWeight
     ) {
       return;
@@ -933,6 +939,14 @@ export function CakeBuilderView() {
               <Alert variant="error" className="mt-4" messages={[quoteState.error]} />
             )}
 
+            {hasMissingFillings && (
+              <Alert
+                variant="info"
+                className="mt-4"
+                messages={[texts.floorsSection.fillingsCountError]}
+              />
+            )}
+
             {isQuoteLoading && !currentQuote ? (
               <p role="status" className="mt-4 text-sm text-ink-muted">
                 {texts.quoteSection.calculating}
@@ -1016,6 +1030,7 @@ export function CakeBuilderView() {
                     uploadingImage ||
                     dietaryConflicts.length > 0 ||
                     hasAeratedViolation ||
+                    hasMissingFillings ||
                     hasPendingInvalidWeight ||
                     !currentQuote
                   }
