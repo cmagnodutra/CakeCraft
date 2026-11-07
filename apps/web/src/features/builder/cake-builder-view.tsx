@@ -19,11 +19,7 @@ import {
   resolveApiAssetUrl,
   uploadRicePaperImage,
 } from '@/lib/api/orders';
-import type {
-  CakeFloorInput,
-  CakeFormat,
-  PriceCalculationResult,
-} from '@/lib/api/orders';
+import type { CakeFloorInput, CakeFormat, PriceCalculationResult } from '@/lib/api/orders';
 
 import { CakePreview3D } from './cake-preview-3d';
 
@@ -33,14 +29,7 @@ const texts = messages.builder;
 
 type DietaryKey = keyof typeof texts.dietarySection.options;
 
-const DIETARY_KEYS: DietaryKey[] = [
-  'lactose',
-  'gluten',
-  'ovos',
-  'castanhas',
-  'amendoim',
-  'soja',
-];
+const DIETARY_KEYS: DietaryKey[] = ['lactose', 'gluten', 'ovos', 'castanhas', 'amendoim', 'soja'];
 
 const DIETARY_EQUIVALENTS: Record<DietaryKey, string[]> = {
   lactose: ['lactose', 'leite'],
@@ -126,8 +115,7 @@ function readDraftFromSession(catalog: CatalogIngredient[]): BuilderDraft | null
     if (!allValid) return null;
 
     return {
-      format:
-        parsed.format && FORMAT_OPTIONS.includes(parsed.format) ? parsed.format : 'REDONDO',
+      format: parsed.format && FORMAT_OPTIONS.includes(parsed.format) ? parsed.format : 'REDONDO',
       colorHex:
         typeof parsed.colorHex === 'string' && /^#[0-9A-Fa-f]{6}$/.test(parsed.colorHex)
           ? parsed.colorHex.toUpperCase()
@@ -182,7 +170,10 @@ function buildInitialDraft(catalog: CatalogIngredient[]): BuilderDraft | null {
   };
 }
 
-function hasAllergenConflict(ingredient: CatalogIngredient, flags: DietaryKey[]): DietaryKey | null {
+function hasAllergenConflict(
+  ingredient: CatalogIngredient,
+  flags: DietaryKey[],
+): DietaryKey | null {
   const normalizedAllergens = ingredient.allergens.map((a) => a.trim().toLowerCase());
   for (const flag of flags) {
     const forbidden = DIETARY_EQUIVALENTS[flag];
@@ -218,6 +209,7 @@ export function CakeBuilderView() {
   const [catalog, setCatalog] = useState<CatalogIngredient[] | null>(null);
   const [catalogError, setCatalogError] = useState<string>();
   const [draft, setDraft] = useState<BuilderDraft | null>(null);
+  const [weightInputs, setWeightInputs] = useState<Record<number, string>>({});
   const [quoteState, setQuoteState] = useState<QuoteState>({ key: '', quote: null });
 
   const [aeratedNotice, setAeratedNotice] = useState<string>();
@@ -373,6 +365,13 @@ export function CakeBuilderView() {
     requireStructuredDough &&
     draft.floors.some((f) => catalogById.get(f.doughIngredientId)?.isAerated);
 
+  const hasPendingInvalidWeight = draft.floors.some((floor) => {
+    const raw = weightInputs[floor.floorNumber];
+    if (raw === undefined) return false;
+    const parsed = Number.parseFloat(raw.trim().replaceAll(',', '.'));
+    return Number.isNaN(parsed) || parsed < 0.5 || parsed > 20;
+  });
+
   const isQuoteLoading = quoteState.key !== floorsSignature;
   const currentQuote = quoteState.key === floorsSignature ? quoteState.quote : null;
 
@@ -414,6 +413,7 @@ export function CakeBuilderView() {
 
     const nextDraft: BuilderDraft = { ...draft, floors: nextFloors };
     setActionError(undefined);
+    setWeightInputs({});
     saveDraftToSession(nextDraft);
     setDraft(nextDraft);
     setAeratedNotice(replacedAerated ? texts.floorsSection.aeratedAutoAdjusted : undefined);
@@ -427,6 +427,38 @@ export function CakeBuilderView() {
         floor.floorNumber === floorNumber ? { ...floor, ...patch } : floor,
       ),
     }));
+  }
+
+  function handleWeightChange(floorNumber: number, rawValue: string) {
+    setWeightInputs((prev) => ({ ...prev, [floorNumber]: rawValue }));
+    const trimmed = rawValue.trim();
+    if (!trimmed) {
+      return;
+    }
+    const parsed = Number.parseFloat(trimmed.replaceAll(',', '.'));
+    if (!Number.isNaN(parsed) && parsed >= 0.5 && parsed <= 20) {
+      updateFloor(floorNumber, {
+        estimatedWeightKg: Number(parsed.toFixed(2)),
+      });
+    }
+  }
+
+  function handleWeightBlur(floorNumber: number, fallbackWeightKg: number) {
+    const rawValue = weightInputs[floorNumber];
+    if (rawValue === undefined) {
+      return;
+    }
+    const parsed = Number.parseFloat(rawValue.trim().replaceAll(',', '.'));
+    const clamped = Number.isNaN(parsed)
+      ? Math.max(0.5, Math.min(20, fallbackWeightKg))
+      : Math.max(0.5, Math.min(20, Number(parsed.toFixed(2))));
+
+    updateFloor(floorNumber, { estimatedWeightKg: clamped });
+    setWeightInputs((prev) => {
+      const next = { ...prev };
+      delete next[floorNumber];
+      return next;
+    });
   }
 
   function toggleFilling(floorNumber: number, fillingId: string) {
@@ -495,6 +527,7 @@ export function CakeBuilderView() {
     if (fresh) {
       saveDraftToSession(fresh);
       setDraft(fresh);
+      setWeightInputs({});
       setAeratedNotice(undefined);
       setUploadSuccess(undefined);
       setActionError(undefined);
@@ -503,7 +536,13 @@ export function CakeBuilderView() {
 
   async function handleSubmitOrder(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!draft || !user || dietaryConflicts.length > 0 || hasAeratedViolation) {
+    if (
+      !draft ||
+      !user ||
+      dietaryConflicts.length > 0 ||
+      hasAeratedViolation ||
+      hasPendingInvalidWeight
+    ) {
       return;
     }
 
@@ -643,9 +682,7 @@ export function CakeBuilderView() {
                     <button
                       key={swatch.hex}
                       type="button"
-                      onClick={() =>
-                        updateDraft((prev) => ({ ...prev, colorHex: swatch.hex }))
-                      }
+                      onClick={() => updateDraft((prev) => ({ ...prev, colorHex: swatch.hex }))}
                       aria-pressed={selected}
                       className={`inline-flex h-11 items-center gap-2 rounded-control border px-3 text-xs font-medium transition-colors ${
                         selected
@@ -725,15 +762,9 @@ export function CakeBuilderView() {
                         step="0.1"
                         min="0.5"
                         max="20"
-                        value={floor.estimatedWeightKg}
-                        onChange={(e) => {
-                          const parsed = Number.parseFloat(e.target.value);
-                          if (!Number.isNaN(parsed)) {
-                            updateFloor(floor.floorNumber, {
-                              estimatedWeightKg: Math.max(0.5, Math.min(20, parsed)),
-                            });
-                          }
-                        }}
+                        value={weightInputs[floor.floorNumber] ?? String(floor.estimatedWeightKg)}
+                        onChange={(e) => handleWeightChange(floor.floorNumber, e.target.value)}
+                        onBlur={() => handleWeightBlur(floor.floorNumber, floor.estimatedWeightKg)}
                         className="h-11 w-24 rounded-control border border-line-strong bg-surface px-3 text-base text-ink"
                       />
                     </div>
@@ -835,9 +866,7 @@ export function CakeBuilderView() {
               hint={texts.personalizationSection.toppingMessageHint}
               maxLength={120}
               value={draft.toppingMessage}
-              onChange={(e) =>
-                updateDraft((prev) => ({ ...prev, toppingMessage: e.target.value }))
-              }
+              onChange={(e) => updateDraft((prev) => ({ ...prev, toppingMessage: e.target.value }))}
             />
 
             <div className="flex flex-col gap-1.5">
@@ -894,9 +923,7 @@ export function CakeBuilderView() {
             floorsCount={draft.floors.length}
             colorHex={draft.colorHex}
             toppingMessage={draft.toppingMessage}
-            riceImageUrl={
-              draft.riceImageUrl ? resolveApiAssetUrl(draft.riceImageUrl) : undefined
-            }
+            riceImageUrl={draft.riceImageUrl ? resolveApiAssetUrl(draft.riceImageUrl) : undefined}
           />
 
           <div className="rounded-control border border-line bg-surface p-6">
@@ -923,9 +950,7 @@ export function CakeBuilderView() {
                         layer.weightKg.toLocaleString('pt-BR'),
                       )}
                     </dt>
-                    <dd className="font-medium text-ink">
-                      {brlFormatter.format(layer.subtotal)}
-                    </dd>
+                    <dd className="font-medium text-ink">{brlFormatter.format(layer.subtotal)}</dd>
                   </div>
                 ))}
 
@@ -991,17 +1016,13 @@ export function CakeBuilderView() {
                     uploadingImage ||
                     dietaryConflicts.length > 0 ||
                     hasAeratedViolation ||
+                    hasPendingInvalidWeight ||
                     !currentQuote
                   }
                 >
                   {texts.quoteSection.submitOrder}
                 </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  fullWidth
-                  onClick={handleResetDraft}
-                >
+                <Button type="button" variant="ghost" fullWidth onClick={handleResetDraft}>
                   {texts.quoteSection.resetDraft}
                 </Button>
               </div>
