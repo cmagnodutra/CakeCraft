@@ -190,8 +190,7 @@ export const messages = {
       xpSummary: (xp: number) => `${xp} XP acumulados`,
       progressDetail: (currentLevelXp: number, remainingXp: number, nextLevel: number) =>
         `${currentLevelXp} / 1000 XP — faltam ${remainingXp} XP para o Nível ${nextLevel}`,
-      ruleHint:
-        'Você ganha 10 XP a cada R$ 10,00 em pedidos pagos. A cada 1000 XP, sobe de nível!',
+      ruleHint: 'Você ganha 10 XP a cada R$ 10,00 em pedidos pagos. A cada 1000 XP, sobe de nível!',
     },
     sessionSection: {
       title: 'Sessão',
@@ -221,8 +220,7 @@ export const messages = {
       'Gerencie massas, recheios e coberturas, valores por quilo, estrutura aerada (RN01) e alertas de alergênicos (RF06).',
     loadingMessage: 'Carregando catálogo administrativo...',
     unauthenticatedTitle: 'Acesso restrito à confeitaria',
-    unauthenticatedBody:
-      'Entre com uma conta administrativa para gerenciar o catálogo de insumos.',
+    unauthenticatedBody: 'Entre com uma conta administrativa para gerenciar o catálogo de insumos.',
     forbiddenTitle: 'Permissão insuficiente',
     forbiddenBody: 'Esta área é exclusiva para administradores da confeitaria.',
     goToLogin: 'Entrar',
@@ -384,8 +382,7 @@ export const messages = {
     errors: {
       catalogLoad: 'Não foi possível carregar o catálogo de insumos. Tente novamente.',
       pricingFailed: 'Não foi possível calcular o orçamento desta combinação.',
-      uploadFailed:
-        'Imagem recusada. Envie um arquivo PNG, JPEG ou WEBP autêntico com até 5 MB.',
+      uploadFailed: 'Imagem recusada. Envie um arquivo PNG, JPEG ou WEBP autêntico com até 5 MB.',
       orderFailed:
         'Não foi possível registrar o pedido. Revise as camadas e restrições selecionadas.',
       network: 'Não foi possível conectar ao servidor. Verifique sua conexão e tente de novo.',
@@ -503,8 +500,7 @@ export const messages = {
         `Pedido #${shortId} movido para "${columnLabel}".`,
       markedReady: (shortId: string) =>
         `Pedido #${shortId} marcado como pronto! Cliente notificado e pontos de XP creditados.`,
-      delivered: (shortId: string) =>
-        `Entrega do pedido #${shortId} registrada com sucesso.`,
+      delivered: (shortId: string) => `Entrega do pedido #${shortId} registrada com sucesso.`,
       cancelled: (shortId: string) =>
         `Pedido #${shortId} cancelado com solicitação de estorno PIX.`,
     },
@@ -558,7 +554,10 @@ export const messages = {
       csvExported: 'Relatório CSV gerado e baixado com sucesso.',
     },
     errors: {
-      loadFailed: 'Não foi possível carregar o relatório financeiro. Verifique o intervalo de datas.',
+      invalidDateRange:
+        'A data inicial não pode ser maior que a data final. Ajuste o período antes de continuar.',
+      loadFailed:
+        'Não foi possível carregar o relatório financeiro. Verifique o intervalo de datas.',
       exportFailed: 'Não foi possível exportar o arquivo CSV agora. Tente novamente.',
       network: 'Não foi possível conectar ao servidor. Verifique sua conexão e tente de novo.',
     },

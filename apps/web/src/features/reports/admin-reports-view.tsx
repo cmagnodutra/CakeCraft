@@ -9,11 +9,8 @@ import { Button, buttonStyles } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { messages } from '@/content/messages';
 import { useAuth } from '@/features/auth/auth-provider';
-import { NetworkError } from '@/lib/api/errors';
-import {
-  downloadFinancialCsvText,
-  fetchFinancialReport,
-} from '@/lib/api/kanban-reports';
+import { ApiError, NetworkError } from '@/lib/api/errors';
+import { downloadFinancialCsvText, fetchFinancialReport } from '@/lib/api/kanban-reports';
 import type { FinancialReport } from '@/lib/api/kanban-reports';
 
 const texts = messages.adminReports;
@@ -27,6 +24,16 @@ const dateTimeFormatter = new Intl.DateTimeFormat('pt-BR', {
   dateStyle: 'short',
   timeStyle: 'short',
 });
+
+function resolveReportErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof NetworkError) {
+    return texts.errors.network;
+  }
+  if (error instanceof ApiError && error.status === 400) {
+    return texts.errors.invalidDateRange;
+  }
+  return fallback;
+}
 
 export function AdminReportsView() {
   const { user, isLoading: authLoading } = useAuth();
@@ -117,9 +124,15 @@ export function AdminReportsView() {
 
   async function handleApplyFilter(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setFiltering(true);
     setErrorBanner(undefined);
     setFeedbackBanner(undefined);
+
+    if (fromDate && toDate && fromDate > toDate) {
+      setErrorBanner(texts.errors.invalidDateRange);
+      return;
+    }
+
+    setFiltering(true);
 
     try {
       const loaded = await fetchFinancialReport({
@@ -130,15 +143,15 @@ export function AdminReportsView() {
       setFromDate(loaded.from);
       setToDate(loaded.to);
     } catch (error) {
-      setErrorBanner(
-        error instanceof NetworkError ? texts.errors.network : texts.errors.loadFailed,
-      );
+      setErrorBanner(resolveReportErrorMessage(error, texts.errors.loadFailed));
     } finally {
       setFiltering(false);
     }
   }
 
-  async function handleQuickPreset(preset: 'TODAY' | 'LAST_7_DAYS' | 'LAST_30_DAYS' | 'CURRENT_MONTH') {
+  async function handleQuickPreset(
+    preset: 'TODAY' | 'LAST_7_DAYS' | 'LAST_30_DAYS' | 'CURRENT_MONTH',
+  ) {
     const now = new Date();
     const toStr = now.toISOString().slice(0, 10);
     let fromStr = toStr;
@@ -174,9 +187,15 @@ export function AdminReportsView() {
   }
 
   async function handleExportCsv() {
-    setExporting(true);
     setErrorBanner(undefined);
     setFeedbackBanner(undefined);
+
+    if (fromDate && toDate && fromDate > toDate) {
+      setErrorBanner(texts.errors.invalidDateRange);
+      return;
+    }
+
+    setExporting(true);
 
     try {
       const csvText = await downloadFinancialCsvText({
@@ -197,9 +216,7 @@ export function AdminReportsView() {
 
       setFeedbackBanner(texts.feedback.csvExported);
     } catch (error) {
-      setErrorBanner(
-        error instanceof NetworkError ? texts.errors.network : texts.errors.exportFailed,
-      );
+      setErrorBanner(resolveReportErrorMessage(error, texts.errors.exportFailed));
     } finally {
       setExporting(false);
     }
@@ -216,6 +233,7 @@ export function AdminReportsView() {
 
       {/* Filtro de periodo + exportacao CSV em 1 clique */}
       <form
+        noValidate
         onSubmit={(event) => {
           void handleApplyFilter(event);
         }}
