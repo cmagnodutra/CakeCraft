@@ -4,10 +4,13 @@ import nextJest from 'next/jest.js';
 // os arquivos .env, entao nao precisamos de ts-jest nem de babel aqui.
 const createJestConfig = nextJest({ dir: './' });
 
-export default createJestConfig({
+const customConfig = createJestConfig({
   testEnvironment: 'jsdom',
   setupFilesAfterEnv: ['<rootDir>/src/test/setup.ts'],
-  moduleNameMapper: { '^@/(.*)$': '<rootDir>/src/$1' },
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/src/$1',
+    '^three$': '<rootDir>/../../node_modules/three/build/three.module.js',
+  },
   testMatch: ['<rootDir>/src/**/*.spec.{ts,tsx}'],
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',
@@ -20,3 +23,9 @@ export default createJestConfig({
   // de seguranca e deve subir conforme as telas ganharem logica.
   coverageThreshold: { global: { statements: 25, branches: 25, functions: 25, lines: 25 } },
 });
+
+export default async function jestConfig() {
+  const resolved = await customConfig();
+  resolved.transformIgnorePatterns = ['/node_modules/(?!(three)/)'];
+  return resolved;
+}
