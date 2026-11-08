@@ -42,10 +42,11 @@ export const messages = {
       { value: '100% seguro', label: 'Alerta automático de alergênicos' },
     ],
     showcase: {
-      badge: 'Vitrine interativa',
+      badge: 'Vitrine 3D interativa',
+      dragHint: 'Arraste o bolo com o mouse para girar em 360°',
       presetsAriaLabel: 'Combinações de inspiração da confeitaria',
       figureAriaLabel: (presetLabel: string, floors: number) =>
-        `Ilustração de bolo artesanal de ${floors} andares na combinação ${presetLabel}`,
+        `Modelo 3D interativo de bolo artesanal de ${floors} andares na combinação ${presetLabel}`,
       compositionLabel: 'Camadas da combinação',
       servingsLabel: 'Rendimento',
       priceLabel: 'Valor de referência',
@@ -390,6 +391,7 @@ export const messages = {
       rotateLeft: 'Girar à esquerda',
       rotateRight: 'Girar à direita',
       resetAngle: 'Centralizar',
+      dragHint: 'Arraste o bolo com o mouse ou o dedo para girar livremente em 360°.',
       angleBadge: (degrees: number) => `Ângulo ${degrees}°`,
       ricePaperBadge: 'Arte em papel de arroz aplicada no topo',
     },
