@@ -405,6 +405,15 @@ export const messages = {
       },
       floorsLabel: 'Quantidade de andares',
       floorOption: (count: number) => (count === 1 ? '1 andar' : `${count} andares`),
+      servingsLabel: 'Quantidade de pessoas',
+      servingsOption: (people: number, weightFormatted: string) =>
+        `Serve ${people} pessoas (${weightFormatted} kg)`,
+      servingsMinTag: (floorsCount: number) => `Indisponível para ${floorsCount} andares`,
+      calculatedWeightLabel: 'Peso total calculado:',
+      calculatedWeightSummary: (weightFormatted: string, floorsCount: number) =>
+        floorsCount === 1
+          ? `${weightFormatted} kg (100g por pessoa, calculado automaticamente)`
+          : `${weightFormatted} kg divididos idealmente entre os ${floorsCount} andares (100g por pessoa)`,
       colorLabel: 'Cor da cobertura (HEX)',
       colorPickerLabel: 'Seletor visual de cor da cobertura',
       swatchesLabel: 'Tons clássicos da confeitaria',
@@ -435,7 +444,7 @@ export const messages = {
       title: 'Camadas por andar',
       floorHeading: (floorNumber: number) =>
         floorNumber === 1 ? '1º andar (base)' : `${floorNumber}º andar`,
-      weightLabel: 'Peso estimado (kg)',
+      floorWeightBadge: (weightFormatted: string) => `Peso ideal: ${weightFormatted} kg`,
       doughLabel: 'Massa',
       coverageLabel: 'Cobertura',
       fillingsLabel: 'Recheios (até 2 por andar)',
