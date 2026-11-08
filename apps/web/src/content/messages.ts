@@ -59,7 +59,7 @@ export const messages = {
           floors: 3,
           composition: 'Massa estruturada · Redução de frutas vermelhas · Chantilly rosé',
           servings: '2,8 kg (~28 fatias)',
-          price: 'R$ 284,00',
+          price: 'R$ 2,84',
         },
         pistachio: {
           label: 'Baunilha & Pistache',
@@ -67,7 +67,7 @@ export const messages = {
           floors: 2,
           composition: 'Massa de baunilha · Creme de pistache · Cobertura acetinada',
           servings: '2,2 kg (~22 fatias)',
-          price: 'R$ 228,00',
+          price: 'R$ 2,28',
         },
         cocoa: {
           label: 'Cacau & Caramelo',
@@ -75,7 +75,7 @@ export const messages = {
           floors: 3,
           composition: 'Massa de cacau · Brigadeiro belga e caramelo · Ganache intensa',
           servings: '3,1 kg (~31 fatias)',
-          price: 'R$ 312,00',
+          price: 'R$ 3,12',
         },
       },
     },

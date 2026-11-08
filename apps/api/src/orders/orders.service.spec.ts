@@ -167,14 +167,14 @@ describe('OrdersService (UC01, RF02-RF07, RN01-RN03)', () => {
       deliveryAddress: 'Rua das Palmeiras, 100',
     });
 
-    // (38 + 50 + 48) * 1.5 + 25 = 136 * 1.5 + 25 = 204 + 25 = 229.00
+    // (38 + 50 + 48) * 1.5 + 0.25 = 136 * 1.5 + 0.25 = 204 + 0.25 = 204.25
     expect(createPixChargeMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        amount: 229,
+        amount: 204.25,
         customerEmail: 'mariana@example.com',
       }),
     );
-    expect(created.totalPrice).toBe(229);
+    expect(created.totalPrice).toBe(204.25);
     expect(created.status).toBe(OrderStatus.AGUARDANDO_PAGAMENTO);
     expect(created.payment?.copyPasteCode).toBe('000201PIX');
   });
