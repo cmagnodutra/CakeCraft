@@ -9,7 +9,6 @@ export interface CakeSceneOptions {
   dripColorHex?: string;
   pearlColorHex?: string;
   topperColorHex?: string;
-  toppingMessage?: string;
   riceImageUrl?: string;
 }
 
@@ -76,44 +75,6 @@ function samplePerimeterPoints(
     });
   }
   return points;
-}
-
-function createTopperTextTexture(text: string): THREE.CanvasTexture | null {
-  if (
-    typeof document === 'undefined' ||
-    (typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('jsdom'))
-  ) {
-    return null;
-  }
-  const canvas = document.createElement('canvas');
-  canvas.width = 1024;
-  canvas.height = 220;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) {
-    return null;
-  }
-
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  const trimmed = text.length > 32 ? `${text.slice(0, 31)}…` : text;
-  ctx.font = 'italic 600 58px Georgia, "Times New Roman", serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-
-  // Contorno suave na cor do papel para legibilidade sobre qualquer tom, sem placa nem fundo
-  ctx.lineJoin = 'round';
-  ctx.miterLimit = 2;
-  ctx.strokeStyle = '#FAF7F2';
-  ctx.lineWidth = 12;
-  ctx.strokeText(trimmed, canvas.width / 2, canvas.height / 2);
-
-  ctx.fillStyle = '#1B1814';
-  ctx.fillText(trimmed, canvas.width / 2, canvas.height / 2);
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.needsUpdate = true;
-  return texture;
 }
 
 export function setupCakeStudioLights(scene: THREE.Scene): void {
@@ -331,7 +292,6 @@ function addTopDecorations(
   topY: number,
   topperMaterial: THREE.Material,
   pearlMaterial: THREE.Material,
-  toppingMessage?: string,
   riceImageUrl?: string,
 ): void {
   // Rosetas e trufas artesanais na coroa do ultimo andar
@@ -383,21 +343,6 @@ function addTopDecorations(
         // Mantem o disco de papel de arroz marfim caso a URL externa nao permita CORS.
       },
     );
-  }
-
-  // Apenas o texto escrito diretamente acima do topo do modelo 3D, sem placa e sem hastes
-  const trimmed = toppingMessage?.trim() ?? '';
-  if (trimmed.length > 0) {
-    const textTex = createTopperTextTexture(trimmed);
-    const spriteMat = new THREE.SpriteMaterial({
-      ...(textTex ? { map: textTex } : {}),
-      transparent: true,
-      depthWrite: false,
-    });
-    const textSprite = new THREE.Sprite(spriteMat);
-    textSprite.scale.set(2.25, 0.48, 1);
-    textSprite.position.set(0, topY + 0.3, 0);
-    parent.add(textSprite);
   }
 }
 
@@ -491,7 +436,6 @@ export function buildCakeModelGroup(options: CakeSceneOptions): THREE.Group {
       currentY,
       topperMaterial,
       pearlMaterial,
-      options.toppingMessage,
       options.riceImageUrl,
     );
   }
