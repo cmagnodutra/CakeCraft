@@ -31,7 +31,6 @@ export interface CakeCanvas3DProps {
   dripColorHex?: string;
   pearlColorHex?: string;
   topperColorHex?: string;
-  toppingMessage?: string;
   riceImageUrl?: string;
   angleDegrees?: number;
   onAngleChange?: (degrees: number) => void;
@@ -88,7 +87,6 @@ export function CakeCanvas3D({
   dripColorHex,
   pearlColorHex,
   topperColorHex,
-  toppingMessage,
   riceImageUrl,
   angleDegrees = 0,
   onAngleChange,
@@ -231,14 +229,13 @@ export function CakeCanvas3D({
     };
   }, []);
 
-  // Reconstroi a malha 3D das camadas quando formato, andares, cores ou topo mudam
+  // Reconstroi a malha 3D das camadas quando formato, andares, cores ou papel de arroz mudam
   useEffect(() => {
     const turntable = turntableRef.current;
     const safeFloors = Math.max(1, Math.min(4, Math.round(floorsCount)));
-    const hasPlaque = Boolean(toppingMessage && toppingMessage.trim().length > 0);
 
-    cameraDistanceRef.current = 5.25 + (safeFloors - 1) * 0.45 + (hasPlaque ? 0.35 : 0);
-    lookAtYRef.current = 0.1 + (safeFloors - 1) * 0.26 + (hasPlaque ? 0.12 : 0);
+    cameraDistanceRef.current = 5.25 + (safeFloors - 1) * 0.45;
+    lookAtYRef.current = 0.1 + (safeFloors - 1) * 0.26;
 
     if (!turntable) {
       return;
@@ -257,21 +254,11 @@ export function CakeCanvas3D({
       dripColorHex,
       pearlColorHex,
       topperColorHex,
-      toppingMessage,
       riceImageUrl,
     });
     turntable.add(nextCakeGroup);
     cakeGroupRef.current = nextCakeGroup;
-  }, [
-    format,
-    floorsCount,
-    colorHex,
-    dripColorHex,
-    pearlColorHex,
-    topperColorHex,
-    toppingMessage,
-    riceImageUrl,
-  ]);
+  }, [format, floorsCount, colorHex, dripColorHex, pearlColorHex, topperColorHex, riceImageUrl]);
 
   const safeFloors = Math.max(1, Math.min(4, Math.round(floorsCount)));
   const tierNumbers = Array.from({ length: safeFloors }, (_, index) => index + 1);

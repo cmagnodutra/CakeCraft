@@ -26,7 +26,7 @@ describe('cake-scene-builder & CakeCanvas3D (Three.js 3D Engine)', () => {
     expect(() => disposeObject3D(pedestal)).not.toThrow();
   });
 
-  it('constroi malhas 3D para REDONDO, QUADRADO e RETANGULAR com placa de topo e papel de arroz', () => {
+  it('constroi malhas 3D para REDONDO, QUADRADO e RETANGULAR com papel de arroz', () => {
     const roundCake = buildCakeModelGroup({
       format: 'REDONDO',
       floorsCount: 3,
@@ -34,7 +34,6 @@ describe('cake-scene-builder & CakeCanvas3D (Three.js 3D Engine)', () => {
       dripColorHex: '#A64B56',
       pearlColorHex: '#FAF7F2',
       topperColorHex: '#9A2B1E',
-      toppingMessage: 'Parabéns, Marina!',
       riceImageUrl: 'http://api.test/topo.png',
     });
     expect(roundCake.children.length).toBeGreaterThan(3);
@@ -43,7 +42,6 @@ describe('cake-scene-builder & CakeCanvas3D (Three.js 3D Engine)', () => {
       format: 'QUADRADO',
       floorsCount: 2,
       colorHex: '#6B4423',
-      toppingMessage: 'Texto muito longo para testar truncamento elegante na placa do topo',
     });
     expect(squareCake.children.length).toBeGreaterThan(2);
 
@@ -135,7 +133,6 @@ describe('cake-scene-builder & CakeCanvas3D (Three.js 3D Engine)', () => {
         format="QUADRADO"
         floorsCount={3}
         colorHex="#6B4423"
-        toppingMessage="Feliz Dia"
         autoRotate
         ariaLabel="Bolo 3D atualizado"
         rendererFactory={fakeRendererFactory}

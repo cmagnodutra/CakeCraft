@@ -96,7 +96,9 @@ export function LandingCakeShowcase() {
 
       {/* Palco 3D WebGL em tempo real (Three.js) com rotacao livre e giro suave */}
       <div className="mt-4 flex flex-col items-center rounded-control border border-line bg-paper px-3 pt-4 pb-3">
-        <span className="sr-only">{preset.plaque}</span>
+        <div className="mb-1 max-w-xs truncate rounded-control border border-line-strong bg-surface px-3.5 py-1 font-serif text-sm italic text-ink shadow-xs">
+          {preset.plaque}
+        </div>
 
         <CakeCanvas3D
           format={palette.format}
@@ -105,7 +107,6 @@ export function LandingCakeShowcase() {
           dripColorHex={palette.dripColorHex}
           pearlColorHex={palette.pearlColorHex}
           topperColorHex={palette.topperColorHex}
-          toppingMessage={preset.plaque}
           autoRotate
           ariaLabel={texts.figureAriaLabel(preset.label, preset.floors)}
           tierTestIdPrefix="landing-cake-tier"
