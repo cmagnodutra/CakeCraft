@@ -30,11 +30,104 @@ export const messages = {
     logout: 'Sair',
   },
   landing: {
+    eyebrow: 'Confeitaria artesanal sob medida · PIX em tempo real',
     titleStart: 'Seu bolo, do seu jeito,',
     titleAccent: 'com o preço na hora.',
     body: 'Monte o seu bolo camada por camada, veja o valor a cada escolha e acompanhe o pedido até a retirada, sem esperar orçamento por mensagem.',
     cta: 'Criar minha conta',
     builderCta: 'Montar meu bolo agora',
+    highlights: [
+      { value: '1 a 4 andares', label: 'Estrutura validada na hora' },
+      { value: 'Zero surpresa', label: 'Preço e fatias em tempo real' },
+      { value: '100% seguro', label: 'Alerta automático de alergênicos' },
+    ],
+    showcase: {
+      badge: 'Vitrine interativa',
+      presetsAriaLabel: 'Combinações de inspiração da confeitaria',
+      figureAriaLabel: (presetLabel: string, floors: number) =>
+        `Ilustração de bolo artesanal de ${floors} andares na combinação ${presetLabel}`,
+      compositionLabel: 'Camadas da combinação',
+      servingsLabel: 'Rendimento',
+      priceLabel: 'Valor de referência',
+      customizeHint:
+        'Alterne os estilos acima para visualizar ou abra o montador 3D para escolher cada insumo.',
+      presets: {
+        rose: {
+          label: 'Rosé & Frutas',
+          plaque: 'Parabéns, Marina!',
+          floors: 3,
+          composition: 'Massa estruturada · Redução de frutas vermelhas · Chantilly rosé',
+          servings: '2,8 kg (~28 fatias)',
+          price: 'R$ 284,00',
+        },
+        pistachio: {
+          label: 'Baunilha & Pistache',
+          plaque: 'Celebração Especial',
+          floors: 2,
+          composition: 'Massa de baunilha · Creme de pistache · Cobertura acetinada',
+          servings: '2,2 kg (~22 fatias)',
+          price: 'R$ 228,00',
+        },
+        cocoa: {
+          label: 'Cacau & Caramelo',
+          plaque: 'Feliz Aniversário',
+          floors: 3,
+          composition: 'Massa de cacau · Brigadeiro belga e caramelo · Ganache intensa',
+          servings: '3,1 kg (~31 fatias)',
+          price: 'R$ 312,00',
+        },
+      },
+    },
+    stepsSection: {
+      eyebrow: 'Como funciona',
+      title: 'Do rascunho em 3D à retirada na confeitaria, tudo em minutos.',
+      steps: [
+        {
+          number: '01',
+          title: 'Monte cada andar em 3D',
+          description:
+            'Escolha formato, quantidade de andares, massas, até dois recheios por camada, cor da cobertura e mensagem de topo.',
+        },
+        {
+          number: '02',
+          title: 'Confira fatias, preço e pague via PIX',
+          description:
+            'Veja o peso total, o rendimento estimado em fatias e o valor atualizado na hora. Confirme o pedido e pague com QR Code PIX instantâneo.',
+        },
+        {
+          number: '03',
+          title: 'Acompanhe o preparo na cozinha',
+          description:
+            'Seu pedido entra direto na fila de produção ao vivo até ficar pronto para entrega ou retirada, somando pontos no Clube CakeCraft.',
+        },
+      ],
+    },
+    craftSection: {
+      eyebrow: 'Cuidado em cada detalhe',
+      title: 'Regras reais de confeitaria aplicadas enquanto você monta.',
+      pillars: [
+        {
+          title: 'Sustentação estrutural garantida',
+          description:
+            'Em bolos de 3 ou 4 andares, o sistema orienta massas estruturadas automaticamente para manter firmeza e acabamento impecável.',
+        },
+        {
+          title: 'Filtro inteligente de alergênicos',
+          description:
+            'Marque restrições como sem lactose, sem glúten ou sem castanhas e receba sugestões imediatas de insumos compatíveis.',
+        },
+        {
+          title: 'Personalização com papel de arroz',
+          description:
+            'Adicione frase comemorativa no topo e envie sua própria arte em PNG, JPEG ou WEBP validada na hora.',
+        },
+        {
+          title: 'Clube de fidelidade CakeCraft',
+          description:
+            'Acumule XP automaticamente a cada encomenda concluída e acompanhe sua evolução de nível direto no perfil.',
+        },
+      ],
+    },
   },
   auth: {
     register: {

@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import { messages } from '@/content/messages';
 
@@ -53,5 +54,46 @@ describe('HomePage (landing)', () => {
     render(<HomePage />);
 
     expect(screen.queryByRole('heading', { level: 1, name: messages.brand.name })).toBeNull();
+  });
+
+  it('exibe a vitrine interativa de bolo a direita e permite alternar entre combinacoes', async () => {
+    const user = userEvent.setup();
+    render(<HomePage />);
+
+    expect(
+      screen.getByRole('img', {
+        name: texts.showcase.figureAriaLabel(
+          texts.showcase.presets.rose.label,
+          texts.showcase.presets.rose.floors,
+        ),
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(texts.showcase.presets.rose.price)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: texts.showcase.presets.pistachio.label }));
+    expect(screen.getByText(texts.showcase.presets.pistachio.plaque)).toBeInTheDocument();
+    expect(screen.getByText(texts.showcase.presets.pistachio.price)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: texts.showcase.presets.cocoa.label }));
+    expect(screen.getByText(texts.showcase.presets.cocoa.plaque)).toBeInTheDocument();
+    expect(screen.getByText(texts.showcase.presets.cocoa.price)).toBeInTheDocument();
+  });
+
+  it('apresenta as secoes de como funciona em 3 etapas e os diferenciais da confeitaria', () => {
+    render(<HomePage />);
+
+    expect(
+      screen.getByRole('heading', { level: 2, name: texts.stepsSection.title }),
+    ).toBeInTheDocument();
+    for (const step of texts.stepsSection.steps) {
+      expect(screen.getByRole('heading', { level: 3, name: step.title })).toBeInTheDocument();
+    }
+
+    expect(
+      screen.getByRole('heading', { level: 2, name: texts.craftSection.title }),
+    ).toBeInTheDocument();
+    for (const pillar of texts.craftSection.pillars) {
+      expect(screen.getByRole('heading', { level: 3, name: pillar.title })).toBeInTheDocument();
+    }
   });
 });
