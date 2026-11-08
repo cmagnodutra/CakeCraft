@@ -43,20 +43,30 @@ async function main() {
     isAerated?: boolean;
     allergens?: string[];
   }> = [
-    { name: 'Pao de Lo Tradicional', type: IngredientType.MASSA, pricePerKg: 35, isAerated: true },
-    { name: 'Massa de Chocolate', type: IngredientType.MASSA, pricePerKg: 38 },
-    { name: 'Massa Red Velvet', type: IngredientType.MASSA, pricePerKg: 45 },
-    { name: 'Brigadeiro', type: IngredientType.RECHEIO, pricePerKg: 40, allergens: ['leite'] },
-    { name: 'Doce de Leite', type: IngredientType.RECHEIO, pricePerKg: 42, allergens: ['leite'] },
-    { name: 'Geleia de Frutas Vermelhas', type: IngredientType.RECHEIO, pricePerKg: 48 },
-    { name: 'Chantilly', type: IngredientType.COBERTURA, pricePerKg: 50, allergens: ['leite'] },
-    { name: 'Pasta Americana', type: IngredientType.COBERTURA, pricePerKg: 60 },
+    {
+      name: 'Pao de Lo Tradicional',
+      type: IngredientType.MASSA,
+      pricePerKg: 0.35,
+      isAerated: true,
+    },
+    { name: 'Massa de Chocolate', type: IngredientType.MASSA, pricePerKg: 0.38 },
+    { name: 'Massa Red Velvet', type: IngredientType.MASSA, pricePerKg: 0.45 },
+    { name: 'Brigadeiro', type: IngredientType.RECHEIO, pricePerKg: 0.4, allergens: ['leite'] },
+    { name: 'Doce de Leite', type: IngredientType.RECHEIO, pricePerKg: 0.42, allergens: ['leite'] },
+    { name: 'Geleia de Frutas Vermelhas', type: IngredientType.RECHEIO, pricePerKg: 0.48 },
+    { name: 'Chantilly', type: IngredientType.COBERTURA, pricePerKg: 0.5, allergens: ['leite'] },
+    { name: 'Pasta Americana', type: IngredientType.COBERTURA, pricePerKg: 0.6 },
   ];
 
   for (const ingrediente of ingredientes) {
     const existente = await prisma.ingredient.findFirst({ where: { name: ingrediente.name } });
     if (!existente) {
       await prisma.ingredient.create({ data: ingrediente });
+    } else {
+      await prisma.ingredient.update({
+        where: { id: existente.id },
+        data: { pricePerKg: ingrediente.pricePerKg },
+      });
     }
   }
 

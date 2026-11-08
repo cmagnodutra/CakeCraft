@@ -172,7 +172,7 @@ describe('Orders, Uploads & Asaas PIX Payments (e2e - PostgreSQL 16 real)', () =
       .expect(201);
     const riceImageUrl = (uploadRes.body as { url: string }).url;
 
-    // Preco esperado: (40 + 60 + 50) * 2.0 + 25 = 150 * 2 + 25 = 325.00
+    // Preco esperado: (40 + 60 + 50) * 2.0 + 0.25 = 150 * 2 + 0.25 = 300.25
     const orderRes = await mariana
       .post('/api/orders')
       .send({
@@ -201,7 +201,7 @@ describe('Orders, Uploads & Asaas PIX Payments (e2e - PostgreSQL 16 real)', () =
     };
 
     expect(order.status).toBe(OrderStatus.AGUARDANDO_PAGAMENTO);
-    expect(order.totalPrice).toBe(325);
+    expect(order.totalPrice).toBe(300.25);
     expect(order.payment.status).toBe(PaymentStatus.PENDENTE);
     expect(order.payment.copyPasteCode).toContain('000201');
 
@@ -212,7 +212,7 @@ describe('Orders, Uploads & Asaas PIX Payments (e2e - PostgreSQL 16 real)', () =
     // Alteracao posterior de preco no catalogo NAO altera o pedido ja fechado (OrderItem snapshot).
     await admin.patch(`/api/catalog/${massaChocolateId}`).send({ pricePerKg: 99 }).expect(200);
     const reloadedBeforePay = await mariana.get(`/api/orders/${order.id}`).expect(200);
-    expect((reloadedBeforePay.body as { totalPrice: number }).totalPrice).toBe(325);
+    expect((reloadedBeforePay.body as { totalPrice: number }).totalPrice).toBe(300.25);
 
     // Webhook sem token valido e recusado com 401.
     await request(server())

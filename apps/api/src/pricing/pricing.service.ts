@@ -8,7 +8,7 @@ import { CakeLayerInputDto, CalculatePriceDto } from './dto/calculate-price.dto'
  * Taxa Base de Montagem (RN02), expressa em centavos para o calculo inteiro
  * e reexposta em reais para os consumidores do modulo.
  */
-const ASSEMBLY_BASE_FEE_CENTS = 2500;
+const ASSEMBLY_BASE_FEE_CENTS = 25;
 export const ASSEMBLY_BASE_FEE = ASSEMBLY_BASE_FEE_CENTS / 100;
 
 export interface LayerPriceBreakdown {
@@ -88,7 +88,9 @@ export class PricingService {
       computedLayers.reduce((sum, layer) => sum + layer.subtotalCents, 0) + ASSEMBLY_BASE_FEE_CENTS;
 
     return {
-      layers: computedLayers.map(({ subtotalCents: _subtotalCents, ...publicLayer }) => publicLayer),
+      layers: computedLayers.map(
+        ({ subtotalCents: _subtotalCents, ...publicLayer }) => publicLayer,
+      ),
       assemblyBaseFee: ASSEMBLY_BASE_FEE,
       totalPrice: centsToReais(totalPriceCents),
     };
@@ -121,7 +123,11 @@ export class PricingService {
     const seenFloors = new Set<number>();
 
     for (const floor of floors) {
-      if (floor.floorNumber < 1 || floor.floorNumber > floors.length || seenFloors.has(floor.floorNumber)) {
+      if (
+        floor.floorNumber < 1 ||
+        floor.floorNumber > floors.length ||
+        seenFloors.has(floor.floorNumber)
+      ) {
         throw new UnprocessableEntityException(
           `A numeracao dos andares deve cobrir sequencialmente de 1 ate ${floors.length} sem repeticoes.`,
         );

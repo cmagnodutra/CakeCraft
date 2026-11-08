@@ -103,10 +103,10 @@ describe('Pricing (e2e - PostgreSQL 16 real)', () => {
         .send({ floors: [nonAeratedFloor()] })
         .expect(200);
 
-      // 30 (massa) + 7 (cobertura) + 25 (recheio) = 62/kg * 1kg = 62 + taxa base (25) = 87
+      // 30 (massa) + 7 (cobertura) + 25 (recheio) = 62/kg * 1kg = 62 + taxa base (0.25) = 62.25
       expect(response.body.layers[0].subtotal).toBe(62);
-      expect(response.body.assemblyBaseFee).toBe(25);
-      expect(response.body.totalPrice).toBe(87);
+      expect(response.body.assemblyBaseFee).toBe(0.25);
+      expect(response.body.totalPrice).toBe(62.25);
     });
 
     it('preserva precisao exata em centavos com Decimal do banco (17.00 x 1.005 = 17.09)', async () => {
@@ -115,9 +115,9 @@ describe('Pricing (e2e - PostgreSQL 16 real)', () => {
         .send({ floors: [aeratedFloor(1, 1.005)] })
         .expect(200);
 
-      // 10.00 (Pao de Lo) + 7.00 (Chantilly) = 17.00 * 1.005 kg = 17.085 -> 17.09 (1709 centavos)
+      // 10.00 (Pao de Lo) + 7.00 (Chantilly) = 17.00 * 1.005 kg = 17.085 -> 17.09 (1709 centavos) + 25 centavos = 1734
       expect(Math.round(Number(response.body.layers[0].subtotal) * 100)).toBe(1709);
-      expect(Math.round(Number(response.body.totalPrice) * 100)).toBe(4209);
+      expect(Math.round(Number(response.body.totalPrice) * 100)).toBe(1734);
     });
 
     it('RN01 - permite massa aerada em 2 andares (200) e bloqueia em 3 andares (422)', async () => {

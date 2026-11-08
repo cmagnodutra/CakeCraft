@@ -108,7 +108,7 @@ describe('PricingService', () => {
       // Em centavos x gramas: (1700 * 1005 + 500) // 1000 === 1709 centavos === 17.09.
       expect(result.layers[0].pricePerKgCombined).toBe(17);
       expect(result.layers[0].subtotal).toBe(17.09);
-      expect(result.totalPrice).toBe(42.09);
+      expect(result.totalPrice).toBe(17.34);
     });
 
     it('ignora ingredientes inativos na precificacao (nao entram no mapa de precos)', async () => {
