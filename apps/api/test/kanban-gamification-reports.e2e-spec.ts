@@ -127,7 +127,7 @@ describe('Kanban, Gamification RN04, Redis Pub/Sub & Reports RF10 (e2e - Postgre
     const customerCookies = await loginCookie('mariana@cakecraft.com.br');
     const adminCookies = await loginCookie('admin@cakecraft.com.br');
 
-    // (40 + 50 + 60) * 1.5 + 25 = 250.00 -> 250 XP
+    // (40 + 50 + 60) * 1.5 + 0.25 = 225.25 -> 220 XP
     const createRes = await request(server())
       .post('/api/orders')
       .set('Cookie', customerCookies)
@@ -149,7 +149,7 @@ describe('Kanban, Gamification RN04, Redis Pub/Sub & Reports RF10 (e2e - Postgre
 
     const orderId = createRes.body.id as string;
     const gatewayRef = createRes.body.payment.gatewayReference as string;
-    expect(createRes.body.totalPrice).toBe(250);
+    expect(createRes.body.totalPrice).toBe(225.25);
 
     // RN03: pedido nao pago permanece invisivel para a cozinha e bloqueado contra PATCH
     const emptyQueue = await request(server())
@@ -202,17 +202,17 @@ describe('Kanban, Gamification RN04, Redis Pub/Sub & Reports RF10 (e2e - Postgre
       .expect(200);
     expect(readyRes.body.status).toBe(OrderStatus.PRONTO);
 
-    // UC02 / RN04: Mariana tinha 850 XP (Nivel 1) + 250 XP = 1100 XP -> sobe para Nivel 2!
+    // UC02 / RN04: Mariana tinha 850 XP (Nivel 1) + 220 XP = 1070 XP -> sobe para Nivel 2!
     const meRes = await request(server())
       .get('/api/auth/me')
       .set('Cookie', customerCookies)
       .expect(200);
-    expect(meRes.body.user.xp).toBe(1100);
+    expect(meRes.body.user.xp).toBe(1070);
     expect(meRes.body.user.level).toBe(2);
 
     const xpTxs = await prisma.xpTransaction.findMany({ where: { orderId } });
     expect(xpTxs).toHaveLength(1);
-    expect(xpTxs[0]?.amount).toBe(250);
+    expect(xpTxs[0]?.amount).toBe(220);
 
     // Cozinha confirma retirada/entrega (PRONTO -> ENTREGUE)
     await request(server())
@@ -239,8 +239,8 @@ describe('Kanban, Gamification RN04, Redis Pub/Sub & Reports RF10 (e2e - Postgre
       .expect(200);
 
     expect(reportRes.body.paidOrdersCount).toBe(1);
-    expect(reportRes.body.totalRevenue).toBe(250);
-    expect(reportRes.body.averageTicket).toBe(250);
+    expect(reportRes.body.totalRevenue).toBe(225.25);
+    expect(reportRes.body.averageTicket).toBe(225.25);
 
     const csvRes = await request(server())
       .get('/api/reports/financial/csv')
@@ -250,6 +250,6 @@ describe('Kanban, Gamification RN04, Redis Pub/Sub & Reports RF10 (e2e - Postgre
     expect(csvRes.headers['content-type']).toContain('text/csv');
     expect(csvRes.headers['content-disposition']).toContain('attachment; filename=');
     expect(csvRes.text).toContain(orderId);
-    expect(csvRes.text).toContain('250.00');
+    expect(csvRes.text).toContain('225.25');
   });
 });
