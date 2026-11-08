@@ -55,11 +55,7 @@ export function CakePreview3D({
       </div>
 
       <div className="mt-4 flex flex-col items-center justify-center rounded-control border border-line bg-paper px-3 py-4">
-        {trimmedTopping.length > 0 && (
-          <div className="mb-1 max-w-xs truncate rounded-control border border-line-strong bg-surface px-3 py-1 font-serif text-sm italic text-ink shadow-xs">
-            {trimmedTopping}
-          </div>
-        )}
+        {trimmedTopping.length > 0 && <span className="sr-only">{trimmedTopping}</span>}
 
         <CakeCanvas3D
           format={format}

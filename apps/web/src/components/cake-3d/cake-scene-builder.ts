@@ -78,7 +78,7 @@ function samplePerimeterPoints(
   return points;
 }
 
-function createTopperPlaqueTexture(text: string): THREE.CanvasTexture | null {
+function createTopperTextTexture(text: string): THREE.CanvasTexture | null {
   if (
     typeof document === 'undefined' ||
     (typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('jsdom'))
@@ -86,30 +86,29 @@ function createTopperPlaqueTexture(text: string): THREE.CanvasTexture | null {
     return null;
   }
   const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 160;
+  canvas.width = 1024;
+  canvas.height = 220;
   const ctx = canvas.getContext('2d');
   if (!ctx) {
     return null;
   }
 
-  ctx.fillStyle = '#FFFDF9';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  ctx.strokeStyle = '#C8A97E';
-  ctx.lineWidth = 8;
-  ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
-
-  ctx.strokeStyle = '#E5DCCB';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
-
-  const trimmed = text.length > 28 ? `${text.slice(0, 27)}…` : text;
-  ctx.fillStyle = '#1B1814';
-  ctx.font = 'italic 600 32px Georgia, "Times New Roman", serif';
+  const trimmed = text.length > 32 ? `${text.slice(0, 31)}…` : text;
+  ctx.font = 'italic 600 58px Georgia, "Times New Roman", serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(trimmed, canvas.width / 2, canvas.height / 2 + 2, canvas.width - 64);
+
+  // Contorno suave na cor do papel para legibilidade sobre qualquer tom, sem placa nem fundo
+  ctx.lineJoin = 'round';
+  ctx.miterLimit = 2;
+  ctx.strokeStyle = '#FAF7F2';
+  ctx.lineWidth = 12;
+  ctx.strokeText(trimmed, canvas.width / 2, canvas.height / 2);
+
+  ctx.fillStyle = '#1B1814';
+  ctx.fillText(trimmed, canvas.width / 2, canvas.height / 2);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -386,43 +385,19 @@ function addTopDecorations(
     );
   }
 
-  // Placa comemorativa 3D com hastes douradas quando houver frase de topo
+  // Apenas o texto escrito diretamente acima do topo do modelo 3D, sem placa e sem hastes
   const trimmed = toppingMessage?.trim() ?? '';
   if (trimmed.length > 0) {
-    const plaqueTex = createTopperPlaqueTexture(trimmed);
-    const stickMat = new THREE.MeshStandardMaterial({
-      color: 0xc8a97e,
-      roughness: 0.3,
-      metalness: 0.7,
+    const textTex = createTopperTextTexture(trimmed);
+    const spriteMat = new THREE.SpriteMaterial({
+      ...(textTex ? { map: textTex } : {}),
+      transparent: true,
+      depthWrite: false,
     });
-
-    for (const offsetX of [-0.36, 0.36]) {
-      const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.44, 12), stickMat);
-      stick.position.set(offsetX, topY + 0.2, 0);
-      stick.castShadow = true;
-      parent.add(stick);
-    }
-
-    const frameMat = new THREE.MeshStandardMaterial({
-      color: 0xfaf7f2,
-      roughness: 0.35,
-      metalness: 0.08,
-    });
-    const frontMat = plaqueTex
-      ? new THREE.MeshStandardMaterial({ map: plaqueTex, roughness: 0.32 })
-      : frameMat;
-
-    const plaqueMesh = new THREE.Mesh(new THREE.BoxGeometry(1.28, 0.42, 0.036), [
-      frameMat,
-      frameMat,
-      frameMat,
-      frameMat,
-      frontMat,
-      frontMat,
-    ]);
-    plaqueMesh.position.set(0, topY + 0.46, 0);
-    plaqueMesh.castShadow = true;
-    parent.add(plaqueMesh);
+    const textSprite = new THREE.Sprite(spriteMat);
+    textSprite.scale.set(2.25, 0.48, 1);
+    textSprite.position.set(0, topY + 0.3, 0);
+    parent.add(textSprite);
   }
 }
 
@@ -526,6 +501,11 @@ export function buildCakeModelGroup(options: CakeSceneOptions): THREE.Group {
 
 export function disposeObject3D(object: THREE.Object3D): void {
   object.traverse((child) => {
+    if (child instanceof THREE.Sprite) {
+      child.material.map?.dispose();
+      child.material.dispose();
+      return;
+    }
     if (child instanceof THREE.Mesh) {
       const mesh = child as THREE.Mesh<THREE.BufferGeometry, THREE.Material | THREE.Material[]>;
       mesh.geometry.dispose();
