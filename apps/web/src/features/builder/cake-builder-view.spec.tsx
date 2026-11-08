@@ -345,7 +345,7 @@ describe('CakeBuilderView (UC01, RF02-RF07, RN01-RN02)', () => {
     expect(await screen.findByText(messages.builder.errors.orderFailed)).toBeInTheDocument();
   });
 
-  it('permite apagar o peso com Backspace para digitar valores como 0.8 e aplica limites ao sair do campo', async () => {
+  it('seleciona apenas a quantidade de pessoas, informa o peso sem permitir edicao manual e divide idealmente entre os andares', async () => {
     fetchCurrentUserMock.mockResolvedValue({
       id: 'u1',
       name: 'Mariana',
@@ -362,26 +362,73 @@ describe('CakeBuilderView (UC01, RF02-RF07, RN01-RN02)', () => {
       </AuthProvider>,
     );
 
-    const weightInput = await screen.findByLabelText<HTMLInputElement>(
-      messages.builder.floorsSection.weightLabel,
+    const servingsSelect = await screen.findByLabelText<HTMLSelectElement>(
+      messages.builder.structureSection.servingsLabel,
     );
+    expect(servingsSelect.value).toBe('15');
+    expect(screen.queryAllByRole('spinbutton')).toHaveLength(0);
+    expect(screen.getByTestId('calculated-total-weight')).toHaveTextContent(/1,5 kg/);
+    expect(screen.getByTestId('floor-1-weight')).toHaveTextContent('Peso ideal: 1,5 kg');
 
-    await user.clear(weightInput);
-    expect(weightInput.value).toBe('');
-
-    await user.type(weightInput, '0.8');
-    expect(weightInput.value).toBe('0.8');
+    await user.selectOptions(servingsSelect, '30');
+    expect(servingsSelect.value).toBe('30');
+    expect(screen.getByTestId('calculated-total-weight')).toHaveTextContent(/3 kg/);
+    expect(screen.getByTestId('floor-1-weight')).toHaveTextContent('Peso ideal: 3 kg');
 
     await waitFor(() =>
       expect(calculateCakePriceMock).toHaveBeenLastCalledWith([
-        expect.objectContaining({ floorNumber: 1, estimatedWeightKg: 0.8 }),
+        expect.objectContaining({ floorNumber: 1, estimatedWeightKg: 3 }),
       ]),
     );
 
-    await user.clear(weightInput);
-    await user.type(weightInput, '0.2');
-    await user.tab();
-    expect(weightInput.value).toBe('0.5');
+    const floorsSelect = screen.getByLabelText(messages.builder.structureSection.floorsLabel);
+    await user.selectOptions(floorsSelect, '3');
+
+    expect(screen.queryAllByRole('spinbutton')).toHaveLength(0);
+    expect(screen.getByTestId('floor-1-weight')).toHaveTextContent('Peso ideal: 1,38 kg');
+    expect(screen.getByTestId('floor-2-weight')).toHaveTextContent('Peso ideal: 0,96 kg');
+    expect(screen.getByTestId('floor-3-weight')).toHaveTextContent('Peso ideal: 0,66 kg');
+
+    await waitFor(() =>
+      expect(calculateCakePriceMock).toHaveBeenLastCalledWith([
+        expect.objectContaining({ floorNumber: 1, estimatedWeightKg: 1.38 }),
+        expect.objectContaining({ floorNumber: 2, estimatedWeightKg: 0.96 }),
+        expect.objectContaining({ floorNumber: 3, estimatedWeightKg: 0.66 }),
+      ]),
+    );
+  });
+
+  it('nao dispara recotacoes desnecessarias na API ao alterar cor, formato ou mensagem de topo', async () => {
+    fetchCurrentUserMock.mockResolvedValue({
+      id: 'u1',
+      name: 'Mariana',
+      email: 'mariana@example.com',
+      role: 'CLIENTE',
+      xp: 0,
+      level: 1,
+    });
+    const user = userEvent.setup();
+
+    render(
+      <AuthProvider>
+        <CakeBuilderView />
+      </AuthProvider>,
+    );
+
+    await screen.findByText(/R\$\s*239,50/);
+    const callsAfterInitialLoad = calculateCakePriceMock.mock.calls.length;
+
+    await user.type(
+      screen.getByLabelText(messages.builder.personalizationSection.toppingMessageLabel),
+      'Parabéns!',
+    );
+    await user.click(screen.getByRole('button', { name: /Rosé/i }));
+    await user.selectOptions(
+      screen.getByLabelText(messages.builder.structureSection.formatLabel),
+      'QUADRADO',
+    );
+
+    expect(calculateCakePriceMock).toHaveBeenCalledTimes(callsAfterInitialLoad);
   });
 
   it('permite desmarcar o unico recheio selecionado, orienta a escolha e recalcula ao marcar outro', async () => {

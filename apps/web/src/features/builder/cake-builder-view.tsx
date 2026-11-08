@@ -22,6 +22,16 @@ import {
 import type { CakeFloorInput, CakeFormat, PriceCalculationResult } from '@/lib/api/orders';
 
 import { CakePreview3D } from './cake-preview-3d';
+import {
+  DEFAULT_SERVINGS,
+  SERVINGS_OPTIONS,
+  distributeWeightAcrossFloors,
+  formatWeightKg,
+  getMinServingsForFloors,
+  normalizeServingsForFloors,
+  servingsToTotalWeightKg,
+} from './cake-weight-distribution';
+import type { ServingsOption } from './cake-weight-distribution';
 
 export const BUILDER_DRAFT_STORAGE_KEY = 'cakecraft:builder-draft:v1';
 
@@ -59,6 +69,7 @@ const brlFormatter = new Intl.NumberFormat('pt-BR', {
 
 export interface BuilderDraft {
   format: CakeFormat;
+  servings: ServingsOption;
   colorHex: string;
   floors: CakeFloorInput[];
   dietaryFlags: DietaryKey[];
@@ -114,13 +125,39 @@ function readDraftFromSession(catalog: CatalogIngredient[]): BuilderDraft | null
     );
     if (!allValid) return null;
 
+    const floorsCount = parsed.floors.length;
+    const inferredServings =
+      typeof parsed.servings === 'number'
+        ? parsed.servings
+        : Math.round(
+            parsed.floors.reduce(
+              (sum, f) =>
+                sum +
+                (typeof f.estimatedWeightKg === 'number' && Number.isFinite(f.estimatedWeightKg)
+                  ? f.estimatedWeightKg
+                  : 0),
+              0,
+            ) * 10,
+          );
+    const servings = normalizeServingsForFloors(inferredServings, floorsCount);
+    const idealWeights = distributeWeightAcrossFloors(servings, floorsCount);
+
+    const normalizedFloors: CakeFloorInput[] = parsed.floors.map((floor, idx) => ({
+      floorNumber: idx + 1,
+      doughIngredientId: floor.doughIngredientId,
+      coverageIngredientId: floor.coverageIngredientId,
+      fillingIngredientIds: [...floor.fillingIngredientIds],
+      estimatedWeightKg: idealWeights[idx] ?? 0.5,
+    }));
+
     return {
       format: parsed.format && FORMAT_OPTIONS.includes(parsed.format) ? parsed.format : 'REDONDO',
+      servings,
       colorHex:
         typeof parsed.colorHex === 'string' && /^#[0-9A-Fa-f]{6}$/.test(parsed.colorHex)
           ? parsed.colorHex.toUpperCase()
           : '#F3EDE3',
-      floors: parsed.floors,
+      floors: normalizedFloors,
       dietaryFlags: Array.isArray(parsed.dietaryFlags)
         ? parsed.dietaryFlags.filter((k): k is DietaryKey => DIETARY_KEYS.includes(k))
         : [],
@@ -139,6 +176,7 @@ function createDefaultFloor(
   fillings: CatalogIngredient[],
   coverages: CatalogIngredient[],
   requireStructuredDough: boolean,
+  estimatedWeightKg: number,
 ): CakeFloorInput {
   const chosenDough =
     (requireStructuredDough ? doughs.find((d) => !d.isAerated) : doughs[0]) ?? doughs[0];
@@ -147,7 +185,7 @@ function createDefaultFloor(
     doughIngredientId: chosenDough.id,
     coverageIngredientId: coverages[0].id,
     fillingIngredientIds: [fillings[0].id],
-    estimatedWeightKg: Math.max(0.8, Number((1.6 - (floorNumber - 1) * 0.3).toFixed(1))),
+    estimatedWeightKg,
   };
 }
 
@@ -160,10 +198,14 @@ function buildInitialDraft(catalog: CatalogIngredient[]): BuilderDraft | null {
     return null;
   }
 
+  const servings = DEFAULT_SERVINGS;
+  const [baseWeight = 1.5] = distributeWeightAcrossFloors(servings, 1);
+
   return {
     format: 'REDONDO',
+    servings,
     colorHex: '#F3EDE3',
-    floors: [createDefaultFloor(1, doughs, fillings, coverages, false)],
+    floors: [createDefaultFloor(1, doughs, fillings, coverages, false, baseWeight)],
     dietaryFlags: [],
     toppingMessage: '',
     deliveryAddress: '',
@@ -214,13 +256,13 @@ export function CakeBuilderView() {
 
   const formatId = useId();
   const floorsId = useId();
+  const servingsId = useId();
   const colorPickerId = useId();
   const ricePaperInputId = useId();
 
   const [catalog, setCatalog] = useState<CatalogIngredient[] | null>(null);
   const [catalogError, setCatalogError] = useState<string>();
   const [draft, setDraft] = useState<BuilderDraft | null>(null);
-  const [weightInputs, setWeightInputs] = useState<Record<number, string>>({});
   const [quoteState, setQuoteState] = useState<QuoteState>({ key: '', quote: null });
 
   const [aeratedNotice, setAeratedNotice] = useState<string>();
@@ -260,28 +302,27 @@ export function CakeBuilderView() {
   const floorsSignature = draft ? JSON.stringify(draft.floors) : '';
 
   useEffect(() => {
-    if (!draft || draft.floors.length === 0) {
+    if (!floorsSignature) {
       return;
     }
 
-    const everyFloorValid = draft.floors.every(isFloorCompleteForQuote);
-    if (!everyFloorValid) {
+    const parsedFloors = JSON.parse(floorsSignature) as CakeFloorInput[];
+    if (parsedFloors.length === 0 || !parsedFloors.every(isFloorCompleteForQuote)) {
       return;
     }
 
     let active = true;
-    const targetKey = JSON.stringify(draft.floors);
 
-    calculateCakePrice(draft.floors)
+    calculateCakePrice(parsedFloors)
       .then((quote) => {
         if (active) {
-          setQuoteState({ key: targetKey, quote });
+          setQuoteState({ key: floorsSignature, quote });
         }
       })
       .catch((error: unknown) => {
         if (active) {
           setQuoteState({
-            key: targetKey,
+            key: floorsSignature,
             quote: null,
             error:
               error instanceof NetworkError ? texts.errors.network : texts.errors.pricingFailed,
@@ -292,7 +333,7 @@ export function CakeBuilderView() {
     return () => {
       active = false;
     };
-  }, [draft, floorsSignature]);
+  }, [floorsSignature]);
 
   if (catalogLoading) {
     return (
@@ -368,13 +409,6 @@ export function CakeBuilderView() {
     requireStructuredDough &&
     draft.floors.some((f) => catalogById.get(f.doughIngredientId)?.isAerated);
 
-  const hasPendingInvalidWeight = draft.floors.some((floor) => {
-    const raw = weightInputs[floor.floorNumber];
-    if (raw === undefined) return false;
-    const parsed = Number.parseFloat(raw.trim().replaceAll(',', '.'));
-    return Number.isNaN(parsed) || parsed < 0.5 || parsed > 20;
-  });
-
   const hasMissingFillings = draft.floors.some(
     (floor) => floor.fillingIngredientIds.length < 1 || floor.fillingIngredientIds.length > 2,
   );
@@ -382,6 +416,11 @@ export function CakeBuilderView() {
   const isQuoteLoading = canCalculateQuote && quoteState.key !== floorsSignature;
   const currentQuote =
     canCalculateQuote && quoteState.key === floorsSignature ? quoteState.quote : null;
+  const activeQuoteError =
+    canCalculateQuote && quoteState.key === floorsSignature ? quoteState.error : undefined;
+
+  const minServingsForCurrentFloors = getMinServingsForFloors(draft.floors.length);
+  const totalCalculatedWeightKg = servingsToTotalWeightKg(draft.servings);
 
   function updateDraft(updater: (prev: BuilderDraft) => BuilderDraft) {
     setActionError(undefined);
@@ -399,9 +438,13 @@ export function CakeBuilderView() {
     const structuredFallback = doughs.find((d) => !d.isAerated);
     let replacedAerated = false;
 
+    const nextServings = normalizeServingsForFloors(draft.servings, nextCount);
+    const idealWeights = distributeWeightAcrossFloors(nextServings, nextCount);
+
     const nextFloors: CakeFloorInput[] = [];
     for (let i = 1; i <= nextCount; i++) {
       const existing = draft.floors[i - 1];
+      const targetWeightKg = idealWeights[i - 1] ?? 0.5;
       if (existing) {
         const currentDough = catalogById.get(existing.doughIngredientId);
         if (mustBeStructured && currentDough?.isAerated && structuredFallback) {
@@ -410,21 +453,46 @@ export function CakeBuilderView() {
             ...existing,
             floorNumber: i,
             doughIngredientId: structuredFallback.id,
+            estimatedWeightKg: targetWeightKg,
           });
         } else {
-          nextFloors.push({ ...existing, floorNumber: i });
+          nextFloors.push({
+            ...existing,
+            floorNumber: i,
+            estimatedWeightKg: targetWeightKg,
+          });
         }
       } else {
-        nextFloors.push(createDefaultFloor(i, doughs, fillings, coverages, mustBeStructured));
+        nextFloors.push(
+          createDefaultFloor(i, doughs, fillings, coverages, mustBeStructured, targetWeightKg),
+        );
       }
     }
 
-    const nextDraft: BuilderDraft = { ...draft, floors: nextFloors };
+    const nextDraft: BuilderDraft = {
+      ...draft,
+      servings: nextServings,
+      floors: nextFloors,
+    };
     setActionError(undefined);
-    setWeightInputs({});
     saveDraftToSession(nextDraft);
     setDraft(nextDraft);
     setAeratedNotice(replacedAerated ? texts.floorsSection.aeratedAutoAdjusted : undefined);
+  }
+
+  function handleServingsChange(rawServings: number) {
+    updateDraft((prev) => {
+      const nextServings = normalizeServingsForFloors(rawServings, prev.floors.length);
+      const idealWeights = distributeWeightAcrossFloors(nextServings, prev.floors.length);
+      return {
+        ...prev,
+        servings: nextServings,
+        floors: prev.floors.map((floor, idx) => ({
+          ...floor,
+          estimatedWeightKg: idealWeights[idx] ?? floor.estimatedWeightKg,
+        })),
+      };
+    });
   }
 
   function updateFloor(floorNumber: number, patch: Partial<CakeFloorInput>) {
@@ -435,38 +503,6 @@ export function CakeBuilderView() {
         floor.floorNumber === floorNumber ? { ...floor, ...patch } : floor,
       ),
     }));
-  }
-
-  function handleWeightChange(floorNumber: number, rawValue: string) {
-    setWeightInputs((prev) => ({ ...prev, [floorNumber]: rawValue }));
-    const trimmed = rawValue.trim();
-    if (!trimmed) {
-      return;
-    }
-    const parsed = Number.parseFloat(trimmed.replaceAll(',', '.'));
-    if (!Number.isNaN(parsed) && parsed >= 0.5 && parsed <= 20) {
-      updateFloor(floorNumber, {
-        estimatedWeightKg: Number(parsed.toFixed(2)),
-      });
-    }
-  }
-
-  function handleWeightBlur(floorNumber: number, fallbackWeightKg: number) {
-    const rawValue = weightInputs[floorNumber];
-    if (rawValue === undefined) {
-      return;
-    }
-    const parsed = Number.parseFloat(rawValue.trim().replaceAll(',', '.'));
-    const clamped = Number.isNaN(parsed)
-      ? Math.max(0.5, Math.min(20, fallbackWeightKg))
-      : Math.max(0.5, Math.min(20, Number(parsed.toFixed(2))));
-
-    updateFloor(floorNumber, { estimatedWeightKg: clamped });
-    setWeightInputs((prev) => {
-      const next = { ...prev };
-      delete next[floorNumber];
-      return next;
-    });
   }
 
   function toggleFilling(floorNumber: number, fillingId: string) {
@@ -532,7 +568,6 @@ export function CakeBuilderView() {
     if (fresh) {
       saveDraftToSession(fresh);
       setDraft(fresh);
-      setWeightInputs({});
       setAeratedNotice(undefined);
       setUploadSuccess(undefined);
       setActionError(undefined);
@@ -546,8 +581,7 @@ export function CakeBuilderView() {
       !user ||
       dietaryConflicts.length > 0 ||
       hasAeratedViolation ||
-      hasMissingFillings ||
-      hasPendingInvalidWeight
+      hasMissingFillings
     ) {
       return;
     }
@@ -616,7 +650,7 @@ export function CakeBuilderView() {
           <section className="rounded-control border border-line bg-surface p-6">
             <h2 className="font-serif text-2xl">{texts.structureSection.title}</h2>
 
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="mt-4 grid gap-4 sm:grid-cols-3">
               <div className="flex flex-col gap-1.5">
                 <label htmlFor={formatId} className="text-sm font-medium text-ink">
                   {texts.structureSection.formatLabel}
@@ -657,6 +691,46 @@ export function CakeBuilderView() {
                   ))}
                 </select>
               </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor={servingsId} className="text-sm font-medium text-ink">
+                  {texts.structureSection.servingsLabel}
+                </label>
+                <select
+                  id={servingsId}
+                  value={String(draft.servings)}
+                  onChange={(e) => handleServingsChange(Number(e.target.value))}
+                  className="h-11 w-full rounded-control border border-line-strong bg-surface px-3 text-base text-ink"
+                >
+                  {SERVINGS_OPTIONS.map((people) => {
+                    const blockedByFloors = people < minServingsForCurrentFloors;
+                    const weightText = formatWeightKg(servingsToTotalWeightKg(people));
+                    return (
+                      <option key={people} value={String(people)} disabled={blockedByFloors}>
+                        {texts.structureSection.servingsOption(people, weightText)}
+                        {blockedByFloors
+                          ? ` — ${texts.structureSection.servingsMinTag(draft.floors.length)}`
+                          : ''}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            </div>
+
+            <div
+              data-testid="calculated-total-weight"
+              className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-control border border-line bg-paper px-3.5 py-2.5 text-sm"
+            >
+              <span className="font-medium text-ink">
+                {texts.structureSection.calculatedWeightLabel}
+              </span>
+              <span className="text-ink-muted">
+                {texts.structureSection.calculatedWeightSummary(
+                  formatWeightKg(totalCalculatedWeightKg),
+                  draft.floors.length,
+                )}
+              </span>
             </div>
 
             <div className="mt-5">
@@ -746,7 +820,6 @@ export function CakeBuilderView() {
             {draft.floors.map((floor) => {
               const doughSelectId = `floor-${floor.floorNumber}-dough`;
               const covSelectId = `floor-${floor.floorNumber}-coverage`;
-              const weightInputId = `floor-${floor.floorNumber}-weight`;
 
               return (
                 <div
@@ -758,22 +831,14 @@ export function CakeBuilderView() {
                       {texts.floorsSection.floorHeading(floor.floorNumber)}
                     </h3>
 
-                    <div className="flex items-center gap-2">
-                      <label htmlFor={weightInputId} className="text-sm font-medium text-ink">
-                        {texts.floorsSection.weightLabel}
-                      </label>
-                      <input
-                        id={weightInputId}
-                        type="number"
-                        step="0.1"
-                        min="0.5"
-                        max="20"
-                        value={weightInputs[floor.floorNumber] ?? String(floor.estimatedWeightKg)}
-                        onChange={(e) => handleWeightChange(floor.floorNumber, e.target.value)}
-                        onBlur={() => handleWeightBlur(floor.floorNumber, floor.estimatedWeightKg)}
-                        className="h-11 w-24 rounded-control border border-line-strong bg-surface px-3 text-base text-ink"
-                      />
-                    </div>
+                    <span
+                      data-testid={`floor-${floor.floorNumber}-weight`}
+                      className="inline-flex items-center rounded-control border border-line bg-sand-100 px-3 py-1.5 text-xs font-medium text-ink"
+                    >
+                      {texts.floorsSection.floorWeightBadge(
+                        formatWeightKg(floor.estimatedWeightKg),
+                      )}
+                    </span>
                   </div>
 
                   <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -935,8 +1000,8 @@ export function CakeBuilderView() {
           <div className="rounded-control border border-line bg-surface p-6">
             <h2 className="font-serif text-2xl">{texts.quoteSection.title}</h2>
 
-            {quoteState.error && (
-              <Alert variant="error" className="mt-4" messages={[quoteState.error]} />
+            {activeQuoteError && (
+              <Alert variant="error" className="mt-4" messages={[activeQuoteError]} />
             )}
 
             {hasMissingFillings && (
@@ -961,7 +1026,7 @@ export function CakeBuilderView() {
                     <dt>
                       {texts.quoteSection.floorItem(
                         layer.floorNumber,
-                        layer.weightKg.toLocaleString('pt-BR'),
+                        formatWeightKg(layer.weightKg),
                       )}
                     </dt>
                     <dd className="font-medium text-ink">{brlFormatter.format(layer.subtotal)}</dd>
@@ -972,13 +1037,14 @@ export function CakeBuilderView() {
                   <dt>{texts.quoteSection.totalWeightLabel}</dt>
                   <dd className="font-medium text-ink">
                     {(() => {
-                      const totalWeightKg = currentQuote.layers.reduce(
-                        (acc, layer) => acc + layer.weightKg,
-                        0,
+                      const totalWeightKg = Number(
+                        currentQuote.layers
+                          .reduce((acc, layer) => acc + layer.weightKg, 0)
+                          .toFixed(2),
                       );
                       const estimatedSlices = Math.max(1, Math.round(totalWeightKg * 10));
                       return texts.quoteSection.servingsEstimate(
-                        totalWeightKg.toLocaleString('pt-BR', { maximumFractionDigits: 2 }),
+                        formatWeightKg(totalWeightKg),
                         estimatedSlices,
                       );
                     })()}
@@ -1031,7 +1097,6 @@ export function CakeBuilderView() {
                     dietaryConflicts.length > 0 ||
                     hasAeratedViolation ||
                     hasMissingFillings ||
-                    hasPendingInvalidWeight ||
                     !currentQuote
                   }
                 >
