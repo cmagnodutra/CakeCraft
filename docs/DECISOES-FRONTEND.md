@@ -147,24 +147,39 @@ o Postgres; quem cobre o banco sao os testes e2e da API.
    e deteccao de reuso, `POST /api/auth/forgot-password`,
    `POST /api/auth/reset-password` e `DELETE /api/usuarios/me/anonymize`).
 
-## 8. Cake Builder (`/builder`), preview 3D isometrico e checkout PIX (`/meus-pedidos`)
+## 8. Cake Builder (`/builder`), motor 3D WebGL (`Three.js`), divisao proporcional de peso e checkout PIX (`/meus-pedidos`)
 
-**Preview 3D rotacionavel sem WebGL (`CakePreview3D`).** O RFC (RF04) exige
-visualizacao 3D interativa e rotacionavel com atualizacao instantanea de cor
-(HEX), formato (`REDONDO`, `QUADRADO`, `RETANGULAR`) e quantidade de andares
-(1 a 4). Em vez de embutir `three.js` (~600 KB minificado e sujeito a perda de
-contexto WebGL em navegadores moveis e ambientes headless), o componente projeta
-cilindros e prismas isometricos vetoriais em SVG combinados com perspectiva CSS
-3D (`perspective: 900px`, rotacao `-180` a `+180` graus) e sombreamento High-Key
-calculado diretamente do HEX da cobertura. O resultado renderiza em `< 16ms`,
-funciona em qualquer dispositivo sem GPU dedicada, e e 100% testavel em Jest.
+**Motor 3D em tempo real com WebGL (`Three.js` em `cake-scene-builder.ts` e `cake-canvas-3d.tsx`).**
+Para cumprir `RF04` com fidelidade visual na vitrine inicial (`/`) e no montador
+(`/builder`), o sistema utiliza geometrias procedurais tridimensionais em
+`Three.js` (`CylinderGeometry`, `ExtrudeGeometry` com cantos arredondados para
+formatos quadrado e retangular, iluminação de estudio High-Key em 3 pontos com
+sombras suaves `PCFSoftShadowMap`, pedestal de porcelana, ganache *drip*,
+perolas de confeitaria, rosetas e textura de papel de arroz no topo). A rotacao
+em 360 graus funciona tanto por arraste livre de mouse/toque (*pointer events*)
+quanto por botoes acessiveis de teclado (`-30` / `+30` / `Centralizar`), com
+degradacao graciosa em ambientes sem WebGL (ex.: JSDOM nos testes automatizados)
+e descarte explicito de geometrias/materiais (`disposeObject3D`) para evitar
+vazamento de VRAM. A mensagem comemorativa de topo e exibida exclusivamente no
+quadro branco da interface acima do canvas 3D para legibilidade maxima.
+
+**Selecao unica por quantidade de pessoas e divisao ideal de peso entre os andares (`cake-weight-distribution.ts`).**
+Em vez de exigir que o cliente digite manualmente o peso em quilos de cada
+andar, o montador apresenta um unico seletor de **Quantidade de pessoas** (de 10
+a 120 pessoas, considerando 100g por porcao), respeitando automaticamente o
+minimo estrutural por numero de andares (10 para 1 andar, 15 para 2, 25 para 3
+e 30 para 4 andares). O peso total e o peso ideal de cada andar sao informados
+apenas para leitura, distribuidos de forma decrescente da base mais larga ao
+topo (`100%` em 1 andar; `62% / 38%` em 2; `46% / 32% / 22%` em 3;
+`36% / 26% / 21% / 17%` em 4) usando aritmetica inteira em dezenas de gramas
+(`0,01 kg`) para eliminar desvios IEEE-754.
 
 **Persistencia de rascunho em `sessionStorage` (Secao 3.2 do RFC).** Visitantes
 podem montar o bolo antes de autenticar. O estado da montagem (somente formato,
-cor, camadas, restricoes, mensagem de topo e URL relativa da imagem — nunca
-tokens ou dados pessoais) fica salvo em `cakecraft:builder-draft:v1` no
-`sessionStorage` e e restaurado automaticamente apos login ou cadastro. Ao
-concluir `POST /orders`, o rascunho e limpo.
+quantidade de pessoas, cor, camadas, restricoes, mensagem de topo e URL relativa
+da imagem — nunca tokens ou dados pessoais) fica salvo em
+`cakecraft:builder-draft:v1` no `sessionStorage` e e restaurado automaticamente
+apos login ou cadastro. Ao concluir `POST /orders`, o rascunho e limpo.
 
 **Regras RN01 e RF06 espelhadas na interface e revalidadas no servidor.** Ao
 subir para 3 ou 4 andares, massas aeradas (`isAerated = true`) ficam bloqueadas
@@ -211,8 +226,9 @@ UTF-8 (`;`) compativel com Excel/LibreOffice em `pt-BR`.
 - **Tipografia:** serifa elegante nos titulos + sans limpa no corpo,
   autohospedadas (sem requisicao ao Google Fonts: melhor para LGPD e para
   o build offline).
-- **Bolo no Cake Builder:** projecao 3D isometrica rotacionavel em SVG + CSS 3D
-  (`CakePreview3D`), instantanea e resiliente em celulares sem exigir WebGL.
+- **Bolo no Cake Builder e na Vitrine Inicial:** motor 3D interativo em WebGL
+  (`Three.js` em `cake-scene-builder.ts` e `cake-canvas-3d.tsx`) com rotacao em
+  360 graus por arraste ou controles acessiveis.
 - **Cor:** neutros quentes (off-white e areia) em vez de cinza frio; CTAs
   continuam em preto solido com texto branco (design system "High-Key").
 - **Layout do builder:** desktop em duas colunas (configuracao a esquerda +
