@@ -133,6 +133,32 @@ describe('AsaasPixGateway (RF07 - integracao Asaas v3)', () => {
     );
   });
 
+  it('respeita o piso minimo de R$ 5,00 exigido pela API v3 do Asaas quando o pedido tem valor reduzido de teste', async () => {
+    const gateway = new AsaasPixGateway(makeConfig());
+
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(200, { data: [{ id: 'cus_min' }] }))
+      .mockResolvedValueOnce(jsonResponse(200, { id: 'pay_min' }))
+      .mockResolvedValueOnce(jsonResponse(200, { encodedImage: 'img', payload: '000201' }));
+
+    await gateway.createPixCharge({
+      orderId: 'order-min',
+      amount: 2.28,
+      customerName: 'Mariana',
+      customerEmail: 'mariana@example.com',
+      description: 'Pedido teste valor reduzido',
+      expiresAt: new Date('2026-10-28T23:45:00.000Z'),
+    });
+
+    const [, paymentsInit] = fetchMock.mock.calls[1] as [string, RequestInit];
+    expect(JSON.parse(paymentsInit.body as string)).toMatchObject({
+      customer: 'cus_min',
+      billingType: 'PIX',
+      value: 5,
+      externalReference: 'order-min',
+    });
+  });
+
   it('traduz falha HTTP ou indisponibilidade do Asaas em BadGatewayException (502) sem vazar segredos', async () => {
     const gateway = new AsaasPixGateway(makeConfig());
     fetchMock.mockResolvedValueOnce(jsonResponse(401, { errors: [{ description: 'invalid key' }] }));

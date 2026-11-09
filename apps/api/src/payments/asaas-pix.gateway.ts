@@ -19,6 +19,8 @@ interface AsaasPixQrCodeResponse {
   payload?: string;
 }
 
+const ASAAS_MIN_CHARGE_BRL = 5;
+
 /**
  * Adaptador HTTP da API v3 do Asaas para emissao e estorno de cobrancas PIX
  * (RF07 / RN03). Em desenvolvimento local sem chave configurada
@@ -41,13 +43,14 @@ export class AsaasPixGateway implements PixGatewayPort {
       input.customerEmail,
     );
     const dueDate = input.expiresAt.toISOString().slice(0, 10);
+    const chargeValue = Math.max(input.amount, ASAAS_MIN_CHARGE_BRL);
 
     const payment = await this.asaasRequest<AsaasIdResponse>('/payments', {
       method: 'POST',
       body: {
         customer: customerId,
         billingType: 'PIX',
-        value: input.amount,
+        value: chargeValue,
         dueDate,
         externalReference: input.orderId,
         description: input.description,
@@ -124,6 +127,7 @@ export class AsaasPixGateway implements PixGatewayPort {
 
     const headers: Record<string, string> = {
       Accept: 'application/json',
+      'User-Agent': 'CakeCraft/1.0',
       access_token: apiKey,
     };
     if (options.body !== undefined) {
