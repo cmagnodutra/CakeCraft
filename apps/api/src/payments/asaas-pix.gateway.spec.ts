@@ -159,6 +159,30 @@ describe('AsaasPixGateway (RF07 - integracao Asaas v3)', () => {
     });
   });
 
+  it('no estorno PIX, faz fallback para o saldo disponivel quando o Asaas desconta taxa e nao bloqueia o cancelamento local', async () => {
+    const gateway = new AsaasPixGateway(makeConfig());
+
+    fetchMock
+      // 1. Estorno integral recusado por saldo insuficiente (400)
+      .mockResolvedValueOnce(jsonResponse(400, { errors: [{ code: 'invalid_object' }] }))
+      // 2. Consulta saldo disponivel na conta Asaas
+      .mockResolvedValueOnce(jsonResponse(200, { balance: 3.87 }))
+      // 3. Estorno parcial do saldo disponivel
+      .mockResolvedValueOnce(jsonResponse(200, { status: 'REFUNDED' }));
+
+    await expect(gateway.refundCharge('pay_prod_123')).resolves.toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    const [refundRetryUrl, refundRetryInit] = fetchMock.mock.calls[2] as [string, RequestInit];
+    expect(refundRetryUrl).toBe('https://api-sandbox.asaas.com/v3/payments/pay_prod_123/refund');
+    expect(JSON.parse(refundRetryInit.body as string)).toEqual({ value: 3.87 });
+
+    // Caso cobranca antiga de outro ambiente (404) e saldo zero: conclui sem travar o Kanban
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(404, {}))
+      .mockResolvedValueOnce(jsonResponse(200, { balance: 0 }));
+    await expect(gateway.refundCharge('pay_0_sandbox_old')).resolves.toBeUndefined();
+  });
+
   it('traduz falha HTTP ou indisponibilidade do Asaas em BadGatewayException (502) sem vazar segredos', async () => {
     const gateway = new AsaasPixGateway(makeConfig());
     fetchMock.mockResolvedValueOnce(jsonResponse(401, { errors: [{ description: 'invalid key' }] }));
