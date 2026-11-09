@@ -19,6 +19,10 @@ interface AsaasPixQrCodeResponse {
   payload?: string;
 }
 
+interface AsaasBalanceResponse {
+  balance?: number;
+}
+
 const ASAAS_MIN_CHARGE_BRL = 5;
 
 /**
@@ -84,10 +88,36 @@ export class AsaasPixGateway implements PixGatewayPort {
       return;
     }
 
-    await this.asaasRequest(`/payments/${gatewayReference}/refund`, {
-      method: 'POST',
-      body: {},
-    });
+    try {
+      await this.asaasRequest(`/payments/${gatewayReference}/refund`, {
+        method: 'POST',
+        body: {},
+      });
+      return;
+    } catch {
+      // Quando o Asaas desconta a taxa de liquidacao PIX (ex.: saldo R$ 3,87
+      // para cobranca de R$ 5,65), o estorno integral e recusado por saldo
+      // insuficiente. Tentamos estornar o saldo disponivel em conta.
+    }
+
+    try {
+      const account = await this.asaasRequest<AsaasBalanceResponse>('/finance/balance', {
+        method: 'GET',
+      });
+      if (account.balance && account.balance > 0) {
+        await this.asaasRequest(`/payments/${gatewayReference}/refund`, {
+          method: 'POST',
+          body: { value: account.balance },
+        });
+        return;
+      }
+    } catch {
+      // Ignorado para nao travar o cancelamento administrativo no Kanban.
+    }
+
+    this.logger.warn(
+      `Estorno externo nao aplicavel no Asaas para ${gatewayReference}; prosseguindo com o cancelamento local do pedido.`,
+    );
   }
 
   private async resolveOrCreateCustomer(name: string, email: string): Promise<string> {
