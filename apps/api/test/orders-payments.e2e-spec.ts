@@ -222,12 +222,21 @@ describe('Orders, Uploads & Asaas PIX Payments (e2e - PostgreSQL 16 real)', () =
       .expect(401);
 
     // Webhook autenticado confirma o pagamento em transacao ACID e libera o pedido para EM_ESPERA (RN03).
+    // Inclui campos extras reais enviados pelo Asaas v3 (dateCreated, value, billingType, customer).
     const webhookRes = await request(server())
       .post('/api/payments/webhooks/asaas')
       .set('asaas-access-token', WEBHOOK_TOKEN)
       .send({
+        id: 'evt_000001',
         event: 'PAYMENT_RECEIVED',
-        payment: { id: order.payment.gatewayReference, externalReference: order.id },
+        dateCreated: '2026-11-09 19:30:00',
+        payment: {
+          id: order.payment.gatewayReference,
+          externalReference: order.id,
+          value: 300.25,
+          billingType: 'PIX',
+          customer: 'cus_000001',
+        },
       })
       .expect(200);
     expect(webhookRes.body).toEqual({ received: true, status: 'PAID' });
