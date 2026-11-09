@@ -69,10 +69,12 @@ Este guia resume as decisoes de engenharia, onde cada regra mora no codigo e com
 
 ---
 
-## 5. Preview 3D no Frontend, Acessibilidade WCAG 2.1 e Design System "High-Key"
+## 5. Motor 3D WebGL (`Three.js`), Divisao Proporcional de Peso, Acessibilidade WCAG 2.1 e Design System "High-Key"
 
-- **Por que `CakePreview3D` usa projecao isometrica SVG + CSS 3D em vez de WebGL pesado?**
-  - `three.js` adicionaria ~600 KB ao bundle e depende de contexto WebGL (que falha ou trava em celulares de entrada e ambientes sem GPU). `apps/web/src/features/builder/cake-preview-3d.tsx` projeta cilindros e prismas isometricos de 1 a 4 andares nos formatos `REDONDO`, `QUADRADO` e `RETANGULAR` com sombreamento calculado do HEX da cobertura e rotacao interativa `-180` a `+180` graus em `< 16ms`, 100% testavel em Jest.
+- **Como funciona a renderizacao 3D interativa (`CakeCanvas3D` + `cake-scene-builder.ts`)?**
+  - Utilizamos `Three.js` com geometrias procedurais (`CylinderGeometry` para bolos redondos e `ExtrudeGeometry` com cantos chanfrados para quadrados e retangulares), iluminacao de estudio High-Key em 3 pontos com sombras suaves, pedestal de porcelana, calda *drip*, perolas e rosetas modeladas em 3D. O usuario gira o bolo em 360 graus arrastando com o mouse/toque ou pelos botoes acessiveis, e a limpeza de GPU (`disposeObject3D`) evita vazamento de memoria. A frase de topo e exibida no quadro branco da interface fora do modelo 3D.
+- **Como funciona a selecao por quantidade de pessoas e divisao ideal de peso (`cake-weight-distribution.ts`)?**
+  - O cliente escolhe apenas quantas pessoas o bolo servira (de 10 a 120 pessoas, a razao de 100g por pessoa). O sistema calcula o peso total e divide-o proporcionalmente de forma decrescente da base mais larga ate o topo (`62%/38%` em 2 andares; `46%/32%/22%` em 3; `36%/26%/21%/17%` em 4), exibindo os pesos apenas para leitura e mantendo aritmetica inteira em dezenas de gramas (`0,01 kg`).
 - **Contraste WCAG 2.1 AA Verificado por Teste Automatizado (`RNF03`):**
   - `apps/web/src/app/design-tokens.spec.ts` faz parse real do `globals.css` e calcula matematicamente a razao de luminancia relativa de todos os pares cor/fundo, falhando o CI caso algum texto caia abaixo de `4.5:1` ou borda de controle abaixo de `3.0:1`.
 
@@ -84,7 +86,7 @@ Este guia resume as decisoes de engenharia, onde cada regra mora no codigo e com
 | --- | --- | --- |
 | Cobertura de testes Backend (`@cakecraft/api`) | `>= 75%` | **96,54% Statements / 96,47% Lines** (30 suites, 187 testes) |
 | Testes E2E Reais Backend (PostgreSQL 16 + Redis 7) | Integracao real | **28 testes E2E em 6 suites** (zero mocks de banco/cache) |
-| Cobertura de testes Frontend (`@cakecraft/web`) | `>= 25%` | **93,19% Statements / 94,46% Lines** (43 suites, 328 testes) |
+| Cobertura de testes Frontend (`@cakecraft/web`) | `>= 25%` | **93,50% Statements / 94,58% Lines** (45 suites, 346 testes) |
 | Vulnerabilidades de Producao (`npm run audit:prod`) | `0` | **0 vulnerabilidades** |
 | Observabilidade (`Prometheus + Grafana`) | Obrigatoria | `/api/metrics` + Dashboard Grafana provisionado (`RNF01` P95 e `RNF07` SLA) |
-| CI/CD + Qualidade + IaC | Obrigatorio + Diferencial | GitHub Actions + SonarCloud + GHCR + Terraform Azure (`infra/terraform/`) |
+| CI/CD + Qualidade + IaC | Obrigatorio + Diferencial | GitHub Actions + SonarCloud (Quality Gate A/A/A) + GHCR + Terraform Azure (`infra/terraform/`) |
