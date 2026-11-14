@@ -12,6 +12,7 @@ import {
   disposeObject3D,
   setupCakeStudioLights,
 } from './cake-scene-builder';
+import type { CakeMiniDecoration, CakeRuffleStyle } from './cake-scene-builder';
 
 export interface WebGLRendererAdapter {
   setPixelRatio(value: number): void;
@@ -28,6 +29,8 @@ export interface CakeCanvas3DProps {
   format: CakeFormat;
   floorsCount: number;
   colorHex: string;
+  ruffleStyle?: CakeRuffleStyle;
+  decorations?: readonly CakeMiniDecoration[];
   dripColorHex?: string;
   pearlColorHex?: string;
   topperColorHex?: string;
@@ -84,6 +87,8 @@ export function CakeCanvas3D({
   format,
   floorsCount,
   colorHex,
+  ruffleStyle = 'NONE',
+  decorations = [],
   dripColorHex,
   pearlColorHex,
   topperColorHex,
@@ -229,7 +234,8 @@ export function CakeCanvas3D({
     };
   }, []);
 
-  // Reconstroi a malha 3D das camadas quando formato, andares, cores ou papel de arroz mudam
+  // Reconstroi a malha 3D das camadas quando formato, andares, cores, babado, decoracoes ou papel de arroz mudam
+  const decorationsKey = decorations.join(',');
   useEffect(() => {
     const turntable = turntableRef.current;
     const safeFloors = Math.max(1, Math.min(4, Math.round(floorsCount)));
@@ -247,10 +253,16 @@ export function CakeCanvas3D({
       cakeGroupRef.current = null;
     }
 
+    const activeDecorations = decorationsKey
+      ? (decorationsKey.split(',') as CakeMiniDecoration[])
+      : [];
+
     const nextCakeGroup = buildCakeModelGroup({
       format,
       floorsCount: safeFloors,
       colorHex,
+      ruffleStyle,
+      decorations: activeDecorations,
       dripColorHex,
       pearlColorHex,
       topperColorHex,
@@ -258,7 +270,17 @@ export function CakeCanvas3D({
     });
     turntable.add(nextCakeGroup);
     cakeGroupRef.current = nextCakeGroup;
-  }, [format, floorsCount, colorHex, dripColorHex, pearlColorHex, topperColorHex, riceImageUrl]);
+  }, [
+    format,
+    floorsCount,
+    colorHex,
+    ruffleStyle,
+    decorationsKey,
+    dripColorHex,
+    pearlColorHex,
+    topperColorHex,
+    riceImageUrl,
+  ]);
 
   const safeFloors = Math.max(1, Math.min(4, Math.round(floorsCount)));
   const tierNumbers = Array.from({ length: safeFloors }, (_, index) => index + 1);

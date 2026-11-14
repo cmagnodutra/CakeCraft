@@ -5,6 +5,11 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useId, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 
+import {
+  CAKE_MINI_DECORATIONS,
+  CAKE_RUFFLE_STYLES,
+} from '@/components/cake-3d/cake-scene-builder';
+import type { CakeMiniDecoration, CakeRuffleStyle } from '@/components/cake-3d/cake-scene-builder';
 import { Alert } from '@/components/ui/alert';
 import { Button, buttonStyles } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
@@ -71,6 +76,8 @@ export interface BuilderDraft {
   format: CakeFormat;
   servings: ServingsOption;
   colorHex: string;
+  ruffleStyle: CakeRuffleStyle;
+  decorations: CakeMiniDecoration[];
   floors: CakeFloorInput[];
   dietaryFlags: DietaryKey[];
   toppingMessage: string;
@@ -157,6 +164,15 @@ function readDraftFromSession(catalog: CatalogIngredient[]): BuilderDraft | null
         typeof parsed.colorHex === 'string' && /^#[0-9A-Fa-f]{6}$/.test(parsed.colorHex)
           ? parsed.colorHex.toUpperCase()
           : '#F3EDE3',
+      ruffleStyle:
+        parsed.ruffleStyle && CAKE_RUFFLE_STYLES.includes(parsed.ruffleStyle)
+          ? parsed.ruffleStyle
+          : 'NONE',
+      decorations: Array.isArray(parsed.decorations)
+        ? parsed.decorations.filter((d): d is CakeMiniDecoration =>
+            CAKE_MINI_DECORATIONS.includes(d),
+          )
+        : [],
       floors: normalizedFloors,
       dietaryFlags: Array.isArray(parsed.dietaryFlags)
         ? parsed.dietaryFlags.filter((k): k is DietaryKey => DIETARY_KEYS.includes(k))
@@ -205,6 +221,8 @@ function buildInitialDraft(catalog: CatalogIngredient[]): BuilderDraft | null {
     format: 'REDONDO',
     servings,
     colorHex: '#F3EDE3',
+    ruffleStyle: 'NONE',
+    decorations: [],
     floors: [createDefaultFloor(1, doughs, fillings, coverages, false, baseWeight)],
     dietaryFlags: [],
     toppingMessage: '',
@@ -258,6 +276,7 @@ export function CakeBuilderView() {
   const floorsId = useId();
   const servingsId = useId();
   const colorPickerId = useId();
+  const ruffleId = useId();
   const ricePaperInputId = useId();
 
   const [catalog, setCatalog] = useState<CatalogIngredient[] | null>(null);
@@ -540,6 +559,18 @@ export function CakeBuilderView() {
     });
   }
 
+  function toggleDecoration(decoration: CakeMiniDecoration) {
+    updateDraft((prev) => {
+      const exists = prev.decorations.includes(decoration);
+      return {
+        ...prev,
+        decorations: exists
+          ? prev.decorations.filter((item) => item !== decoration)
+          : [...prev.decorations, decoration],
+      };
+    });
+  }
+
   async function handleRicePaperChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -781,6 +812,63 @@ export function CakeBuilderView() {
                 })}
               </div>
             </div>
+
+            <div className="mt-5 grid gap-5 border-t border-line pt-5">
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor={ruffleId} className="text-sm font-medium text-ink">
+                  {texts.structureSection.ruffleLabel}
+                </label>
+                <select
+                  id={ruffleId}
+                  value={draft.ruffleStyle}
+                  onChange={(e) =>
+                    updateDraft((prev) => ({
+                      ...prev,
+                      ruffleStyle: e.target.value as CakeRuffleStyle,
+                    }))
+                  }
+                  className="h-11 w-full rounded-control border border-line-strong bg-surface px-3 text-base text-ink"
+                >
+                  {CAKE_RUFFLE_STYLES.map((style) => (
+                    <option key={style} value={style}>
+                      {texts.structureSection.ruffleOptions[style]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <fieldset>
+                <legend className="text-sm font-medium text-ink">
+                  {texts.structureSection.decorationsLabel}
+                </legend>
+                <p className="mt-1 text-xs text-ink-muted">
+                  {texts.structureSection.decorationsHint}
+                </p>
+                <div className="mt-2.5 grid gap-2.5 sm:grid-cols-3">
+                  {CAKE_MINI_DECORATIONS.map((dec) => {
+                    const checked = draft.decorations.includes(dec);
+                    return (
+                      <label
+                        key={dec}
+                        className={`flex min-h-11 cursor-pointer items-center gap-2.5 rounded-control border px-3 py-2 text-sm transition-colors ${
+                          checked
+                            ? 'border-ink bg-sand-100 font-bold text-ink'
+                            : 'border-line bg-surface text-ink hover:bg-sand-100'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleDecoration(dec)}
+                          className="h-4 w-4 accent-ink"
+                        />
+                        <span>{texts.structureSection.decorationOptions[dec]}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </fieldset>
+            </div>
           </section>
 
           {/* Restricoes alimentares (RF06) */}
@@ -993,6 +1081,8 @@ export function CakeBuilderView() {
             format={draft.format}
             floorsCount={draft.floors.length}
             colorHex={draft.colorHex}
+            ruffleStyle={draft.ruffleStyle}
+            decorations={draft.decorations}
             toppingMessage={draft.toppingMessage}
             riceImageUrl={draft.riceImageUrl ? resolveApiAssetUrl(draft.riceImageUrl) : undefined}
           />

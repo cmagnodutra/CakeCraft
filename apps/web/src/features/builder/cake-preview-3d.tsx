@@ -4,6 +4,7 @@ import { useState } from 'react';
 
 import { CakeCanvas3D } from '@/components/cake-3d/cake-canvas-3d';
 import { normalizeCakeHex } from '@/components/cake-3d/cake-scene-builder';
+import type { CakeMiniDecoration, CakeRuffleStyle } from '@/components/cake-3d/cake-scene-builder';
 import { Button } from '@/components/ui/button';
 import { messages } from '@/content/messages';
 import type { CakeFormat } from '@/lib/api/orders';
@@ -12,6 +13,8 @@ export interface CakePreview3DProps {
   format: CakeFormat;
   floorsCount: number;
   colorHex: string;
+  ruffleStyle?: CakeRuffleStyle;
+  decorations?: readonly CakeMiniDecoration[];
   toppingMessage?: string;
   riceImageUrl?: string;
 }
@@ -25,6 +28,8 @@ export function CakePreview3D({
   format,
   floorsCount,
   colorHex,
+  ruffleStyle = 'NONE',
+  decorations = [],
   toppingMessage,
   riceImageUrl,
 }: CakePreview3DProps) {
@@ -65,6 +70,8 @@ export function CakePreview3D({
           format={format}
           floorsCount={safeFloors}
           colorHex={baseHex}
+          ruffleStyle={ruffleStyle}
+          decorations={decorations}
           riceImageUrl={riceImageUrl}
           angleDegrees={angle}
           onAngleChange={setAngle}
@@ -86,7 +93,7 @@ export function CakePreview3D({
         <Button variant="secondary" size="md" onClick={() => rotateBy(-30)}>
           {texts.rotateLeft}
         </Button>
-        <Button variant="ghost" size="md" onClick={() => setAngle(0)}>
+        <Button variant="secondary" size="md" onClick={() => setAngle(0)}>
           {texts.resetAngle}
         </Button>
         <Button variant="secondary" size="md" onClick={() => rotateBy(30)}>

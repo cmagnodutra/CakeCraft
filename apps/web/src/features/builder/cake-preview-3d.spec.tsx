@@ -66,7 +66,9 @@ describe('CakePreview3D (RF04 - visualizacao 3D interativa)', () => {
     await user.click(screen.getByRole('button', { name: previewTexts.rotateLeft }));
     expect(screen.getByText(previewTexts.angleBadge(-30))).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: previewTexts.resetAngle }));
+    const resetBtn = screen.getByRole('button', { name: previewTexts.resetAngle });
+    expect(resetBtn.className).toContain('border-line-strong');
+    await user.click(resetBtn);
     expect(screen.getByText(previewTexts.angleBadge(0))).toBeInTheDocument();
   });
 });

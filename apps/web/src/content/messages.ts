@@ -417,6 +417,21 @@ export const messages = {
       colorLabel: 'Cor da cobertura (HEX)',
       colorPickerLabel: 'Seletor visual de cor da cobertura',
       swatchesLabel: 'Tons clássicos da confeitaria',
+      ruffleLabel: 'Babado do bolo (acabamento nas bordas e laterais)',
+      ruffleOptions: {
+        NONE: 'Sem babado (liso)',
+        TOP: 'Babado em cima',
+        SIDES: 'Babado nas laterais',
+        BOTH: 'Babado em cima e nas laterais',
+      },
+      decorationsLabel: 'Mini decorações (opcional)',
+      decorationsHint:
+        'O bolo inicia totalmente liso. Marque os acabamentos artesanais que deseja visualizar no modelo 3D.',
+      decorationOptions: {
+        PEARLS: 'Pérolas de açúcar na base',
+        FLOWERS: 'Flores modeladas no topo',
+        ROSETTES: 'Rosetas e trufas na coroa',
+      },
     },
     dietarySection: {
       title: 'Restrições alimentares',

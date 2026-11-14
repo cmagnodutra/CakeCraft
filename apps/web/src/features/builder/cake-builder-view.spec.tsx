@@ -398,7 +398,7 @@ describe('CakeBuilderView (UC01, RF02-RF07, RN01-RN02)', () => {
     );
   });
 
-  it('nao dispara recotacoes desnecessarias na API ao alterar cor, formato ou mensagem de topo', async () => {
+  it('nao dispara recotacoes desnecessarias na API ao alterar cor, formato, babado, mini decoracoes ou mensagem de topo', async () => {
     fetchCurrentUserMock.mockResolvedValue({
       id: 'u1',
       name: 'Mariana',
@@ -417,6 +417,31 @@ describe('CakeBuilderView (UC01, RF02-RF07, RN01-RN02)', () => {
 
     await screen.findByText(/R\$\s*239,50/);
     const callsAfterInitialLoad = calculateCakePriceMock.mock.calls.length;
+
+    const ruffleSelect = screen.getByLabelText<HTMLSelectElement>(
+      messages.builder.structureSection.ruffleLabel,
+    );
+    expect(ruffleSelect.value).toBe('NONE');
+
+    const pearlsCheckbox = screen.getByLabelText<HTMLInputElement>(
+      messages.builder.structureSection.decorationOptions.PEARLS,
+    );
+    const flowersCheckbox = screen.getByLabelText<HTMLInputElement>(
+      messages.builder.structureSection.decorationOptions.FLOWERS,
+    );
+    expect(pearlsCheckbox.checked).toBe(false);
+    expect(flowersCheckbox.checked).toBe(false);
+
+    await user.selectOptions(ruffleSelect, 'BOTH');
+    expect(ruffleSelect.value).toBe('BOTH');
+
+    await user.click(pearlsCheckbox);
+    await user.click(flowersCheckbox);
+    expect(pearlsCheckbox.checked).toBe(true);
+    expect(flowersCheckbox.checked).toBe(true);
+
+    await user.click(pearlsCheckbox);
+    expect(pearlsCheckbox.checked).toBe(false);
 
     await user.type(
       screen.getByLabelText(messages.builder.personalizationSection.toppingMessageLabel),
