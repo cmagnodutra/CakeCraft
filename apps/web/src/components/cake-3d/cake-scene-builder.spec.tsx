@@ -26,35 +26,44 @@ describe('cake-scene-builder & CakeCanvas3D (Three.js 3D Engine)', () => {
     expect(() => disposeObject3D(pedestal)).not.toThrow();
   });
 
-  it('constroi malhas 3D para REDONDO, QUADRADO e RETANGULAR com papel de arroz', () => {
-    const roundCake = buildCakeModelGroup({
+  it('inicia o bolo 3D completamente liso (sem babado e sem mini decoracoes) e adiciona cada acabamento quando selecionado', () => {
+    const bareSquareCake = buildCakeModelGroup({
+      format: 'QUADRADO',
+      floorsCount: 2,
+      colorHex: '#6B4423',
+    });
+    // Bolo pelado: apenas os 2 grupos de andares, sem decoracoes de topo
+    expect(bareSquareCake.children).toHaveLength(2);
+    // Cada andar quadrado liso possui apenas o mesh da camada (sem babado nem perolas)
+    expect(bareSquareCake.children[0]?.children).toHaveLength(1);
+
+    const decoratedRoundCake = buildCakeModelGroup({
       format: 'REDONDO',
       floorsCount: 3,
       colorHex: '#E8B4B8',
+      ruffleStyle: 'BOTH',
+      decorations: ['PEARLS', 'FLOWERS', 'ROSETTES'],
       dripColorHex: '#A64B56',
       pearlColorHex: '#FAF7F2',
       topperColorHex: '#9A2B1E',
       riceImageUrl: 'http://api.test/topo.png',
     });
-    expect(roundCake.children.length).toBeGreaterThan(3);
-
-    const squareCake = buildCakeModelGroup({
-      format: 'QUADRADO',
-      floorsCount: 2,
-      colorHex: '#6B4423',
-    });
-    expect(squareCake.children.length).toBeGreaterThan(2);
+    expect(decoratedRoundCake.children.length).toBeGreaterThan(3);
+    expect(decoratedRoundCake.children[0]?.children.length).toBeGreaterThan(3);
 
     const rectCake = buildCakeModelGroup({
       format: 'RETANGULAR',
       floorsCount: 4,
       colorHex: '#FAF7F2',
+      ruffleStyle: 'TOP',
+      decorations: ['PEARLS'],
     });
-    expect(rectCake.children.length).toBeGreaterThan(4);
+    expect(rectCake.children).toHaveLength(4);
+    expect(rectCake.children[0]?.children.length).toBeGreaterThan(1);
 
     expect(() => {
-      disposeObject3D(roundCake);
-      disposeObject3D(squareCake);
+      disposeObject3D(bareSquareCake);
+      disposeObject3D(decoratedRoundCake);
       disposeObject3D(rectCake);
     }).not.toThrow();
   });

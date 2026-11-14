@@ -2,10 +2,22 @@ import * as THREE from 'three';
 
 import type { CakeFormat } from '@/lib/api/orders';
 
+export type CakeRuffleStyle = 'NONE' | 'TOP' | 'SIDES' | 'BOTH';
+export type CakeMiniDecoration = 'PEARLS' | 'FLOWERS' | 'ROSETTES';
+
+export const CAKE_RUFFLE_STYLES: readonly CakeRuffleStyle[] = ['NONE', 'TOP', 'SIDES', 'BOTH'];
+export const CAKE_MINI_DECORATIONS: readonly CakeMiniDecoration[] = [
+  'PEARLS',
+  'FLOWERS',
+  'ROSETTES',
+];
+
 export interface CakeSceneOptions {
   format: CakeFormat;
   floorsCount: number;
   colorHex: string;
+  ruffleStyle?: CakeRuffleStyle;
+  decorations?: readonly CakeMiniDecoration[];
   dripColorHex?: string;
   pearlColorHex?: string;
   topperColorHex?: string;
@@ -78,12 +90,15 @@ function samplePerimeterPoints(
 }
 
 export function setupCakeStudioLights(scene: THREE.Scene): void {
-  const hemiLight = new THREE.HemisphereLight(0xfffdf9, 0xe6dccb, 1.35);
+  const ambientLight = new THREE.AmbientLight(0xffffff, 1.45);
+  scene.add(ambientLight);
+
+  const hemiLight = new THREE.HemisphereLight(0xffffff, 0xfaf6f0, 0.75);
   hemiLight.position.set(0, 8, 0);
   scene.add(hemiLight);
 
-  const keyLight = new THREE.DirectionalLight(0xfff9f0, 1.75);
-  keyLight.position.set(5.2, 8.4, 6.0);
+  const keyLight = new THREE.DirectionalLight(0xfffcf7, 0.85);
+  keyLight.position.set(4.8, 4.4, 7.2);
   keyLight.castShadow = true;
   keyLight.shadow.mapSize.width = 1024;
   keyLight.shadow.mapSize.height = 1024;
@@ -96,12 +111,12 @@ export function setupCakeStudioLights(scene: THREE.Scene): void {
   keyLight.shadow.bias = -0.0005;
   scene.add(keyLight);
 
-  const rimLight = new THREE.DirectionalLight(0xf5e9da, 0.85);
-  rimLight.position.set(-5.4, 5.2, -4.6);
+  const rimLight = new THREE.DirectionalLight(0xfffaf2, 0.55);
+  rimLight.position.set(-5.2, 3.8, -4.6);
   scene.add(rimLight);
 
-  const fillLight = new THREE.PointLight(0xfff6eb, 0.65, 16);
-  fillLight.position.set(-2.2, 3.0, 5.2);
+  const fillLight = new THREE.PointLight(0xffffff, 0.55, 18);
+  fillLight.position.set(-3.8, 2.4, 6.2);
   scene.add(fillLight);
 }
 
@@ -172,12 +187,19 @@ interface TierSpec {
   baseY: number;
 }
 
+interface TierDecorationFlags {
+  hasTopRuffle: boolean;
+  hasSideRuffle: boolean;
+  hasPearls: boolean;
+}
+
 function buildSingleTierMesh(
   format: CakeFormat,
   spec: TierSpec,
   frostingMaterial: THREE.Material,
-  glazeMaterial: THREE.Material,
+  ruffleMaterial: THREE.Material,
   pearlMaterial: THREE.Material,
+  flags: TierDecorationFlags,
 ): THREE.Group {
   const tierGroup = new THREE.Group();
 
@@ -203,11 +225,12 @@ function buildSingleTierMesh(
     shoulder.receiveShadow = true;
     tierGroup.add(shoulder);
 
+    // Usa exatamente o mesmo frostingMaterial no topo para garantir tom identico as laterais
     const topCap = new THREE.Mesh(
       new THREE.CylinderGeometry(spec.halfW - bevelR * 0.8, spec.halfW - bevelR * 0.8, 0.03, 64),
-      glazeMaterial,
+      frostingMaterial,
     );
-    topCap.position.y = spec.baseY + spec.height - 0.01;
+    topCap.position.y = spec.baseY + spec.height - 0.015;
     topCap.receiveShadow = true;
     tierGroup.add(topCap);
   } else {
@@ -228,61 +251,102 @@ function buildSingleTierMesh(
     boxTier.castShadow = true;
     boxTier.receiveShadow = true;
     tierGroup.add(boxTier);
-
-    const glazeShape = createRoundedRectShape(spec.halfW - 0.05, spec.halfD - 0.05, 0.14);
-    const glazeGeo = new THREE.ExtrudeGeometry(glazeShape, {
-      depth: 0.022,
-      bevelEnabled: true,
-      bevelThickness: 0.012,
-      bevelSize: 0.012,
-      bevelSegments: 3,
-      curveSegments: 12,
-    });
-    glazeGeo.rotateX(-Math.PI / 2);
-
-    const glazeCap = new THREE.Mesh(glazeGeo, glazeMaterial);
-    glazeCap.position.y = spec.baseY + spec.height - 0.018;
-    glazeCap.receiveShadow = true;
-    tierGroup.add(glazeCap);
   }
 
-  // Gotas organicas de calda escorrendo pela borda superior
-  const dripCount = Math.max(10, Math.round(spec.halfW * 16));
-  const dripPerimeter = samplePerimeterPoints(
-    format,
-    spec.halfW + 0.008,
-    spec.halfD + 0.008,
-    dripCount,
-  );
-  const dripLengths = [0.16, 0.28, 0.12, 0.22, 0.33, 0.15, 0.25];
+  // Babado em cima (ondas de bico de confeitar na borda superior do andar)
+  if (flags.hasTopRuffle) {
+    const topCount = Math.max(20, Math.round(spec.halfW * 30));
+    const topPerimeter = samplePerimeterPoints(
+      format,
+      spec.halfW - 0.025,
+      spec.halfD - 0.025,
+      topCount,
+    );
+    const topWaveGeo = new THREE.SphereGeometry(0.048, 12, 10);
 
-  dripPerimeter.forEach((pt, idx) => {
-    const dropLen = dripLengths[idx % dripLengths.length] * (spec.height / 0.72);
-    const dropGeo = new THREE.CapsuleGeometry(0.026, dropLen, 6, 10);
-    const dropMesh = new THREE.Mesh(dropGeo, glazeMaterial);
-    dropMesh.position.set(pt.x, spec.baseY + spec.height - dropLen / 2 - 0.05, pt.z);
-    tierGroup.add(dropMesh);
-  });
+    topPerimeter.forEach((pt, idx) => {
+      const wave = new THREE.Mesh(topWaveGeo, ruffleMaterial);
+      const waveLift = idx % 2 === 0 ? 0.028 : 0.016;
+      wave.scale.set(1.25, 0.65, 1.25);
+      wave.position.set(pt.x, spec.baseY + spec.height + waveLift, pt.z);
+      wave.castShadow = true;
+      tierGroup.add(wave);
+    });
+  }
 
-  // Colar de perolas de confeitaria na base do andar
-  const pearlCount = Math.max(18, Math.round(spec.halfW * 28));
-  const pearlPerimeter = samplePerimeterPoints(
-    format,
-    spec.halfW + 0.032,
-    spec.halfD + 0.032,
-    pearlCount,
-  );
-  const pearlGeo = new THREE.SphereGeometry(0.044, 14, 12);
+  // Babado nas laterais (ondas e festoes decorativos ao redor das laterais do andar)
+  if (flags.hasSideRuffle) {
+    const dripCount = Math.max(12, Math.round(spec.halfW * 18));
+    const dripPerimeter = samplePerimeterPoints(
+      format,
+      spec.halfW + 0.012,
+      spec.halfD + 0.012,
+      dripCount,
+    );
+    const dripLengths = [0.16, 0.28, 0.12, 0.22, 0.33, 0.15, 0.25];
 
-  for (const pt of pearlPerimeter) {
-    const pearl = new THREE.Mesh(pearlGeo, pearlMaterial);
-    pearl.scale.set(1, 0.82, 1);
-    pearl.position.set(pt.x, spec.baseY + 0.034, pt.z);
-    pearl.castShadow = true;
-    tierGroup.add(pearl);
+    dripPerimeter.forEach((pt, idx) => {
+      const dropLen = dripLengths[idx % dripLengths.length] * (spec.height / 0.72);
+      const dropGeo = new THREE.CapsuleGeometry(0.028, dropLen, 6, 10);
+      const dropMesh = new THREE.Mesh(dropGeo, ruffleMaterial);
+      dropMesh.position.set(pt.x, spec.baseY + spec.height - dropLen / 2 - 0.05, pt.z);
+      tierGroup.add(dropMesh);
+    });
+  }
+
+  // Mini decoracao: colar de perolas de confeitaria na base do andar
+  if (flags.hasPearls) {
+    const pearlCount = Math.max(18, Math.round(spec.halfW * 28));
+    const pearlPerimeter = samplePerimeterPoints(
+      format,
+      spec.halfW + 0.032,
+      spec.halfD + 0.032,
+      pearlCount,
+    );
+    const pearlGeo = new THREE.SphereGeometry(0.044, 14, 12);
+
+    for (const pt of pearlPerimeter) {
+      const pearl = new THREE.Mesh(pearlGeo, pearlMaterial);
+      pearl.scale.set(1, 0.82, 1);
+      pearl.position.set(pt.x, spec.baseY + 0.034, pt.z);
+      pearl.castShadow = true;
+      tierGroup.add(pearl);
+    }
   }
 
   return tierGroup;
+}
+
+function buildFlowerCluster(
+  x: number,
+  y: number,
+  z: number,
+  petalMaterial: THREE.Material,
+  centerMaterial: THREE.Material,
+): THREE.Group {
+  const flowerGroup = new THREE.Group();
+  flowerGroup.position.set(x, y, z);
+
+  const petalGeo = new THREE.SphereGeometry(0.042, 12, 10);
+  const petalCount = 5;
+  const petalRadius = 0.046;
+
+  for (let i = 0; i < petalCount; i++) {
+    const angle = (i / petalCount) * Math.PI * 2;
+    const petal = new THREE.Mesh(petalGeo, petalMaterial);
+    petal.scale.set(1.15, 0.48, 1.15);
+    petal.position.set(Math.cos(angle) * petalRadius, 0, Math.sin(angle) * petalRadius);
+    petal.castShadow = true;
+    flowerGroup.add(petal);
+  }
+
+  const centerGeo = new THREE.SphereGeometry(0.032, 12, 10);
+  const center = new THREE.Mesh(centerGeo, centerMaterial);
+  center.position.y = 0.018;
+  center.castShadow = true;
+  flowerGroup.add(center);
+
+  return flowerGroup;
 }
 
 function addTopDecorations(
@@ -292,30 +356,55 @@ function addTopDecorations(
   topY: number,
   topperMaterial: THREE.Material,
   pearlMaterial: THREE.Material,
-  riceImageUrl?: string,
+  options: {
+    hasFlowers: boolean;
+    hasRosettes: boolean;
+    riceImageUrl?: string;
+  },
 ): void {
-  // Rosetas e trufas artesanais na coroa do ultimo andar
-  const crownPoints = samplePerimeterPoints(format, topSpec.halfW * 0.76, topSpec.halfD * 0.76, 10);
-  const rosetteGeo = new THREE.SphereGeometry(0.068, 16, 14);
-  const berryGeo = new THREE.SphereGeometry(0.048, 14, 12);
-
-  crownPoints.forEach((pt, idx) => {
-    const rosette = new THREE.Mesh(rosetteGeo, pearlMaterial);
-    rosette.scale.set(1, 0.68, 1);
-    rosette.position.set(pt.x, topY + 0.035, pt.z);
-    rosette.castShadow = true;
-    parent.add(rosette);
-
-    if (idx % 2 === 0) {
-      const berry = new THREE.Mesh(berryGeo, topperMaterial);
-      berry.position.set(pt.x, topY + 0.09, pt.z);
-      berry.castShadow = true;
-      parent.add(berry);
+  // Mini decoracao: flores de acucar modeladas em 3D no topo
+  if (options.hasFlowers) {
+    const flowerPoints = samplePerimeterPoints(
+      format,
+      topSpec.halfW * 0.68,
+      topSpec.halfD * 0.68,
+      8,
+    );
+    for (const pt of flowerPoints) {
+      const flower = buildFlowerCluster(pt.x, topY + 0.024, pt.z, pearlMaterial, topperMaterial);
+      parent.add(flower);
     }
-  });
+  }
+
+  // Mini decoracao: rosetas e trufas artesanais na coroa do ultimo andar
+  if (options.hasRosettes) {
+    const crownPoints = samplePerimeterPoints(
+      format,
+      topSpec.halfW * 0.78,
+      topSpec.halfD * 0.78,
+      10,
+    );
+    const rosetteGeo = new THREE.SphereGeometry(0.068, 16, 14);
+    const berryGeo = new THREE.SphereGeometry(0.048, 14, 12);
+
+    crownPoints.forEach((pt, idx) => {
+      const rosette = new THREE.Mesh(rosetteGeo, pearlMaterial);
+      rosette.scale.set(1, 0.68, 1);
+      rosette.position.set(pt.x, topY + 0.035, pt.z);
+      rosette.castShadow = true;
+      parent.add(rosette);
+
+      if (idx % 2 === 0) {
+        const berry = new THREE.Mesh(berryGeo, topperMaterial);
+        berry.position.set(pt.x, topY + 0.09, pt.z);
+        berry.castShadow = true;
+        parent.add(berry);
+      }
+    });
+  }
 
   // Disco comestivel de papel de arroz no topo (RF05)
-  if (riceImageUrl) {
+  if (options.riceImageUrl) {
     const waferRadius = Math.min(topSpec.halfW, topSpec.halfD) * 0.54;
     const waferMat = new THREE.MeshStandardMaterial({
       color: 0xfffdf8,
@@ -332,7 +421,7 @@ function addTopDecorations(
     const loader = new THREE.TextureLoader();
     loader.setCrossOrigin('anonymous');
     loader.load(
-      riceImageUrl,
+      options.riceImageUrl,
       (loadedTex) => {
         loadedTex.colorSpace = THREE.SRGBColorSpace;
         waferMat.map = loadedTex;
@@ -355,7 +444,7 @@ export function buildCakeModelGroup(options: CakeSceneOptions): THREE.Group {
   const baseHsl = { h: 0, s: 0, l: 0 };
   baseColor.getHSL(baseHsl);
 
-  const glazeColor = options.dripColorHex
+  const ruffleColor = options.dripColorHex
     ? new THREE.Color(options.dripColorHex)
     : shiftColorLightness(baseHex, baseHsl.l > 0.65 ? -0.14 : 0.18, 0.05);
 
@@ -367,22 +456,18 @@ export function buildCakeModelGroup(options: CakeSceneOptions): THREE.Group {
     ? new THREE.Color(options.topperColorHex)
     : shiftColorLightness(baseHex, baseHsl.l > 0.5 ? -0.28 : 0.26, 0.14);
 
-  const frostingMaterial = new THREE.MeshPhysicalMaterial({
+  const frostingMaterial = new THREE.MeshStandardMaterial({
     color: baseColor,
-    roughness: 0.44,
+    roughness: 0.65,
     metalness: 0.0,
-    sheen: 0.35,
-    sheenRoughness: 0.6,
-    clearcoat: 0.08,
-    clearcoatRoughness: 0.42,
   });
 
-  const glazeMaterial = new THREE.MeshPhysicalMaterial({
-    color: glazeColor,
-    roughness: 0.16,
+  const ruffleMaterial = new THREE.MeshPhysicalMaterial({
+    color: ruffleColor,
+    roughness: 0.22,
     metalness: 0.02,
-    clearcoat: 0.88,
-    clearcoatRoughness: 0.12,
+    clearcoat: 0.65,
+    clearcoatRoughness: 0.18,
   });
 
   const pearlMaterial = new THREE.MeshPhysicalMaterial({
@@ -398,6 +483,15 @@ export function buildCakeModelGroup(options: CakeSceneOptions): THREE.Group {
     metalness: 0.04,
     clearcoat: 0.55,
   });
+
+  const ruffleStyle: CakeRuffleStyle = options.ruffleStyle ?? 'NONE';
+  const decorations = new Set<CakeMiniDecoration>(options.decorations ?? []);
+
+  const tierFlags: TierDecorationFlags = {
+    hasTopRuffle: ruffleStyle === 'TOP' || ruffleStyle === 'BOTH',
+    hasSideRuffle: ruffleStyle === 'SIDES' || ruffleStyle === 'BOTH',
+    hasPearls: decorations.has('PEARLS'),
+  };
 
   const tierHeight = safeFloors >= 4 ? 0.58 : 0.68;
   let currentY = 0.01;
@@ -419,8 +513,9 @@ export function buildCakeModelGroup(options: CakeSceneOptions): THREE.Group {
       options.format,
       spec,
       frostingMaterial,
-      glazeMaterial,
+      ruffleMaterial,
       pearlMaterial,
+      tierFlags,
     );
     root.add(tierMesh);
 
@@ -436,7 +531,11 @@ export function buildCakeModelGroup(options: CakeSceneOptions): THREE.Group {
       currentY,
       topperMaterial,
       pearlMaterial,
-      options.riceImageUrl,
+      {
+        hasFlowers: decorations.has('FLOWERS'),
+        hasRosettes: decorations.has('ROSETTES'),
+        riceImageUrl: options.riceImageUrl,
+      },
     );
   }
 
