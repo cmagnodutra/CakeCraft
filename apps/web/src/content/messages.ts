@@ -417,19 +417,19 @@ export const messages = {
       colorLabel: 'Cor da cobertura (HEX)',
       colorPickerLabel: 'Seletor visual de cor da cobertura',
       swatchesLabel: 'Tons clássicos da confeitaria',
-      ruffleLabel: 'Babado do bolo (acabamento nas bordas e laterais)',
+      ruffleLabel: 'Decoração do bolo (acabamento nas bordas e laterais)',
       ruffleOptions: {
-        NONE: 'Sem babado (liso)',
-        TOP: 'Babado em cima',
-        SIDES: 'Babado nas laterais',
-        BOTH: 'Babado em cima e nas laterais',
+        NONE: 'Sem decoração (liso)',
+        TOP: 'Decoração em cima',
+        SIDES: 'Decoração nas laterais',
+        BOTH: 'Decoração em cima e nas laterais',
       },
       ruffleReferenceLabel:
-        'Foto de referência para o babado (opcional — PNG, JPEG ou WEBP até 5 MB)',
+        'Foto de referência para a decoração (opcional — PNG, JPEG ou WEBP até 5 MB)',
       ruffleReferenceHint:
-        'Por ser um acabamento bem específico, envie uma foto de inspiração do babado desejado.',
-      ruffleReferenceUploaded: 'Foto de referência do babado validada e anexada.',
-      removeRuffleReference: 'Remover foto do babado',
+        'Por ser um acabamento bem específico, envie uma foto de inspiração da decoração desejada.',
+      ruffleReferenceUploaded: 'Foto de referência da decoração validada e anexada.',
+      removeRuffleReference: 'Remover foto da decoração',
       decorationsLabel: 'Mini decorações e detalhes do topo (opcional)',
       decorationsHint:
         'O bolo inicia totalmente liso. Marque os acabamentos artesanais que deseja visualizar no modelo 3D.',

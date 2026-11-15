@@ -398,7 +398,7 @@ describe('CakeBuilderView (UC01, RF02-RF07, RN01-RN02)', () => {
     );
   });
 
-  it('nao dispara recotacoes desnecessarias na API ao alterar cor, formato, babado, mini decoracoes ou mensagem de topo', async () => {
+  it('nao dispara recotacoes desnecessarias na API ao alterar cor, formato, decoracao, mini decoracoes ou mensagem de topo', async () => {
     fetchCurrentUserMock.mockResolvedValue({
       id: 'u1',
       name: 'Mariana',
@@ -502,7 +502,7 @@ describe('CakeBuilderView (UC01, RF02-RF07, RN01-RN02)', () => {
     );
   });
 
-  it('permite anexar e remover fotos de referencia para o babado e para os detalhes do topo', async () => {
+  it('permite anexar e remover fotos de referencia para a decoracao e para os detalhes do topo', async () => {
     fetchCurrentUserMock.mockResolvedValue({
       id: 'u1',
       name: 'Mariana',
@@ -538,7 +538,7 @@ describe('CakeBuilderView (UC01, RF02-RF07, RN01-RN02)', () => {
     );
     await user.upload(
       ruffleRefInput,
-      new File(['png-bytes'], 'babado-lambeth.png', { type: 'image/png' }),
+      new File(['png-bytes'], 'decoracao-lambeth.png', { type: 'image/png' }),
     );
     expect(
       await screen.findByText(messages.builder.structureSection.ruffleReferenceUploaded),

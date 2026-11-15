@@ -253,7 +253,7 @@ function buildSingleTierMesh(
     tierGroup.add(boxTier);
   }
 
-  // Babado em cima (coroa dupla trancada de bico pitanga na borda superior do andar)
+  // Decoracao em cima (coroa dupla trancada de bico pitanga na borda superior do andar)
   if (flags.hasTopRuffle) {
     const topCount = Math.max(28, Math.round(spec.halfW * 38));
     const outerPerimeter = samplePerimeterPoints(
@@ -290,7 +290,7 @@ function buildSingleTierMesh(
     });
   }
 
-  // Babado nas laterais (festoes Lambeth duplos plissados + faixa ondulada + rosetas nos encontros)
+  // Decoracao nas laterais (festoes Lambeth duplos plissados + faixa ondulada + rosetas nos encontros)
   if (flags.hasSideRuffle) {
     const archCount = Math.max(6, Math.round(spec.halfW * 6));
     const samplesPerArch = 10;
@@ -333,7 +333,7 @@ function buildSingleTierMesh(
       lowerPuff.castShadow = true;
       tierGroup.add(lowerPuff);
 
-      // 3. Faixa de babado sinuoso continuo na parte inferior-media da lateral
+      // 3. Faixa de decoracao sinuosa continua na parte inferior-media da lateral
       const rippleY =
         midWaveBaseY + Math.sin((idx / totalSideSamples) * archCount * Math.PI * 2) * 0.038;
       const frillBead = new THREE.Mesh(frillBeadGeo, ruffleMaterial);
