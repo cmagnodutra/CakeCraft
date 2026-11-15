@@ -234,7 +234,7 @@ export function CakeCanvas3D({
     };
   }, []);
 
-  // Reconstroi a malha 3D das camadas quando formato, andares, cores, babado, decoracoes ou papel de arroz mudam
+  // Reconstroi a malha 3D das camadas quando formato, andares, cores, decoracao, mini decoracoes ou papel de arroz mudam
   const decorationsKey = decorations.join(',');
   useEffect(() => {
     const turntable = turntableRef.current;

@@ -26,7 +26,7 @@ describe('cake-scene-builder & CakeCanvas3D (Three.js 3D Engine)', () => {
     expect(() => disposeObject3D(pedestal)).not.toThrow();
   });
 
-  it('inicia o bolo 3D completamente liso (sem babado e sem mini decoracoes) e adiciona cada acabamento quando selecionado', () => {
+  it('inicia o bolo 3D completamente liso (sem decoracao e sem mini decoracoes) e adiciona cada acabamento quando selecionado', () => {
     const bareSquareCake = buildCakeModelGroup({
       format: 'QUADRADO',
       floorsCount: 2,
@@ -34,7 +34,7 @@ describe('cake-scene-builder & CakeCanvas3D (Three.js 3D Engine)', () => {
     });
     // Bolo pelado: apenas os 2 grupos de andares, sem decoracoes de topo
     expect(bareSquareCake.children).toHaveLength(2);
-    // Cada andar quadrado liso possui apenas o mesh da camada (sem babado nem perolas)
+    // Cada andar quadrado liso possui apenas o mesh da camada (sem decoracao nem perolas)
     expect(bareSquareCake.children[0]?.children).toHaveLength(1);
 
     const decoratedRoundCake = buildCakeModelGroup({
