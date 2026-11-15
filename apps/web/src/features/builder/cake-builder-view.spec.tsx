@@ -501,4 +501,67 @@ describe('CakeBuilderView (UC01, RF02-RF07, RN01-RN02)', () => {
       ]),
     );
   });
+
+  it('permite anexar e remover fotos de referencia para o babado e para os detalhes do topo', async () => {
+    fetchCurrentUserMock.mockResolvedValue({
+      id: 'u1',
+      name: 'Mariana',
+      email: 'mariana@example.com',
+      role: 'CLIENTE',
+      xp: 0,
+      level: 1,
+    });
+    uploadRicePaperImageMock
+      .mockResolvedValueOnce({
+        url: '/api/uploads/rice-paper/22222222-2222-4222-8222-222222222222.png',
+        mimeType: 'image/png',
+        sizeBytes: 512,
+      })
+      .mockResolvedValueOnce({
+        url: '/api/uploads/rice-paper/33333333-3333-4333-8333-333333333333.png',
+        mimeType: 'image/png',
+        sizeBytes: 512,
+      });
+
+    const user = userEvent.setup();
+
+    render(
+      <AuthProvider>
+        <CakeBuilderView />
+      </AuthProvider>,
+    );
+
+    await screen.findByText(/R\$\s*239,50/);
+
+    const ruffleRefInput = screen.getByLabelText(
+      messages.builder.structureSection.ruffleReferenceLabel,
+    );
+    await user.upload(
+      ruffleRefInput,
+      new File(['png-bytes'], 'babado-lambeth.png', { type: 'image/png' }),
+    );
+    expect(
+      await screen.findByText(messages.builder.structureSection.ruffleReferenceUploaded),
+    ).toBeInTheDocument();
+
+    const decorationsRefInput = screen.getByLabelText(
+      messages.builder.structureSection.decorationsReferenceLabel,
+    );
+    await user.upload(
+      decorationsRefInput,
+      new File(['png-bytes'], 'topo-flores.png', { type: 'image/png' }),
+    );
+    expect(
+      await screen.findByText(messages.builder.structureSection.decorationsReferenceUploaded),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('button', {
+        name: messages.builder.structureSection.removeRuffleReference,
+      }),
+    );
+    expect(
+      screen.queryByText(messages.builder.structureSection.ruffleReferenceUploaded),
+    ).not.toBeInTheDocument();
+  });
 });

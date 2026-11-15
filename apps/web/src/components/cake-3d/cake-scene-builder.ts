@@ -253,44 +253,108 @@ function buildSingleTierMesh(
     tierGroup.add(boxTier);
   }
 
-  // Babado em cima (ondas de bico de confeitar na borda superior do andar)
+  // Babado em cima (coroa dupla trancada de bico pitanga na borda superior do andar)
   if (flags.hasTopRuffle) {
-    const topCount = Math.max(20, Math.round(spec.halfW * 30));
-    const topPerimeter = samplePerimeterPoints(
+    const topCount = Math.max(28, Math.round(spec.halfW * 38));
+    const outerPerimeter = samplePerimeterPoints(
       format,
-      spec.halfW - 0.025,
-      spec.halfD - 0.025,
+      spec.halfW - 0.018,
+      spec.halfD - 0.018,
       topCount,
     );
-    const topWaveGeo = new THREE.SphereGeometry(0.048, 12, 10);
+    const innerPerimeter = samplePerimeterPoints(
+      format,
+      spec.halfW - 0.075,
+      spec.halfD - 0.075,
+      topCount,
+    );
+    const outerShellGeo = new THREE.SphereGeometry(0.052, 12, 10);
+    const innerShellGeo = new THREE.SphereGeometry(0.038, 10, 8);
 
-    topPerimeter.forEach((pt, idx) => {
-      const wave = new THREE.Mesh(topWaveGeo, ruffleMaterial);
-      const waveLift = idx % 2 === 0 ? 0.028 : 0.016;
-      wave.scale.set(1.25, 0.65, 1.25);
+    outerPerimeter.forEach((pt, idx) => {
+      const wave = new THREE.Mesh(outerShellGeo, ruffleMaterial);
+      const waveLift = idx % 2 === 0 ? 0.032 : 0.018;
+      wave.scale.set(1.32, 0.72, 1.32);
       wave.position.set(pt.x, spec.baseY + spec.height + waveLift, pt.z);
       wave.castShadow = true;
       tierGroup.add(wave);
     });
+
+    innerPerimeter.forEach((pt, idx) => {
+      const innerWave = new THREE.Mesh(innerShellGeo, pearlMaterial);
+      const waveLift = idx % 2 === 0 ? 0.02 : 0.03;
+      innerWave.scale.set(1.18, 0.62, 1.18);
+      innerWave.position.set(pt.x, spec.baseY + spec.height + waveLift, pt.z);
+      innerWave.castShadow = true;
+      tierGroup.add(innerWave);
+    });
   }
 
-  // Babado nas laterais (ondas e festoes decorativos ao redor das laterais do andar)
+  // Babado nas laterais (festoes Lambeth duplos plissados + faixa ondulada + rosetas nos encontros)
   if (flags.hasSideRuffle) {
-    const dripCount = Math.max(12, Math.round(spec.halfW * 18));
-    const dripPerimeter = samplePerimeterPoints(
+    const archCount = Math.max(6, Math.round(spec.halfW * 6));
+    const samplesPerArch = 10;
+    const totalSideSamples = archCount * samplesPerArch;
+    const sidePerimeter = samplePerimeterPoints(
       format,
-      spec.halfW + 0.012,
-      spec.halfD + 0.012,
-      dripCount,
+      spec.halfW + 0.016,
+      spec.halfD + 0.016,
+      totalSideSamples,
     );
-    const dripLengths = [0.16, 0.28, 0.12, 0.22, 0.33, 0.15, 0.25];
 
-    dripPerimeter.forEach((pt, idx) => {
-      const dropLen = dripLengths[idx % dripLengths.length] * (spec.height / 0.72);
-      const dropGeo = new THREE.CapsuleGeometry(0.028, dropLen, 6, 10);
-      const dropMesh = new THREE.Mesh(dropGeo, ruffleMaterial);
-      dropMesh.position.set(pt.x, spec.baseY + spec.height - dropLen / 2 - 0.05, pt.z);
-      tierGroup.add(dropMesh);
+    const upperSwagGeo = new THREE.SphereGeometry(0.044, 12, 10);
+    const lowerSwagGeo = new THREE.SphereGeometry(0.034, 10, 8);
+    const frillBeadGeo = new THREE.SphereGeometry(0.038, 10, 8);
+    const knotRosetteGeo = new THREE.SphereGeometry(0.058, 12, 10);
+    const knotCenterGeo = new THREE.SphereGeometry(0.032, 10, 8);
+
+    const highY = spec.baseY + spec.height * 0.82;
+    const archDrop = spec.height * 0.34;
+    const midWaveBaseY = spec.baseY + spec.height * 0.26;
+
+    sidePerimeter.forEach((pt, idx) => {
+      const localPhase = ((idx % samplesPerArch) / samplesPerArch) * Math.PI;
+      const sag = Math.sin(localPhase);
+      const pleatOffset = idx % 2 === 0 ? 0.012 : -0.012;
+
+      // 1. Festao superior plissado em arco (draped Lambeth swag)
+      const yUpper = highY - sag * archDrop + pleatOffset;
+      const upperPuff = new THREE.Mesh(upperSwagGeo, ruffleMaterial);
+      upperPuff.scale.set(1.28, 0.78, 1.28);
+      upperPuff.position.set(pt.x + pt.nx * 0.008, yUpper, pt.z + pt.nz * 0.008);
+      upperPuff.castShadow = true;
+      tierGroup.add(upperPuff);
+
+      // 2. Festao paralelo inferior acompanhando a curvatura
+      const yLower = highY - sag * (archDrop * 1.08) - 0.088;
+      const lowerPuff = new THREE.Mesh(lowerSwagGeo, pearlMaterial);
+      lowerPuff.scale.set(1.15, 0.68, 1.15);
+      lowerPuff.position.set(pt.x + pt.nx * 0.012, yLower, pt.z + pt.nz * 0.012);
+      lowerPuff.castShadow = true;
+      tierGroup.add(lowerPuff);
+
+      // 3. Faixa de babado sinuoso continuo na parte inferior-media da lateral
+      const rippleY =
+        midWaveBaseY + Math.sin((idx / totalSideSamples) * archCount * Math.PI * 2) * 0.038;
+      const frillBead = new THREE.Mesh(frillBeadGeo, ruffleMaterial);
+      frillBead.scale.set(1.22, 0.66, 1.22);
+      frillBead.position.set(pt.x + pt.nx * 0.006, rippleY, pt.z + pt.nz * 0.006);
+      frillBead.castShadow = true;
+      tierGroup.add(frillBead);
+
+      // 4. Roseta com perola central em cada vertice de encontro dos festoes
+      if (idx % samplesPerArch === 0) {
+        const knot = new THREE.Mesh(knotRosetteGeo, ruffleMaterial);
+        knot.scale.set(1.1, 1.1, 1.1);
+        knot.position.set(pt.x + pt.nx * 0.018, highY + 0.01, pt.z + pt.nz * 0.018);
+        knot.castShadow = true;
+        tierGroup.add(knot);
+
+        const knotPearl = new THREE.Mesh(knotCenterGeo, pearlMaterial);
+        knotPearl.position.set(pt.x + pt.nx * 0.042, highY + 0.01, pt.z + pt.nz * 0.042);
+        knotPearl.castShadow = true;
+        tierGroup.add(knotPearl);
+      }
     });
   }
 

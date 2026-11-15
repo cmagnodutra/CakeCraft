@@ -424,7 +424,13 @@ export const messages = {
         SIDES: 'Babado nas laterais',
         BOTH: 'Babado em cima e nas laterais',
       },
-      decorationsLabel: 'Mini decorações (opcional)',
+      ruffleReferenceLabel:
+        'Foto de referência para o babado (opcional — PNG, JPEG ou WEBP até 5 MB)',
+      ruffleReferenceHint:
+        'Por ser um acabamento bem específico, envie uma foto de inspiração do babado desejado.',
+      ruffleReferenceUploaded: 'Foto de referência do babado validada e anexada.',
+      removeRuffleReference: 'Remover foto do babado',
+      decorationsLabel: 'Mini decorações e detalhes do topo (opcional)',
       decorationsHint:
         'O bolo inicia totalmente liso. Marque os acabamentos artesanais que deseja visualizar no modelo 3D.',
       decorationOptions: {
@@ -432,6 +438,12 @@ export const messages = {
         FLOWERS: 'Flores modeladas no topo',
         ROSETTES: 'Rosetas e trufas na coroa',
       },
+      decorationsReferenceLabel:
+        'Foto de referência para os detalhes do topo (opcional — PNG, JPEG ou WEBP até 5 MB)',
+      decorationsReferenceHint:
+        'Envie uma foto de referência para flores, pérolas ou arranjos específicos no topo.',
+      decorationsReferenceUploaded: 'Foto de referência dos detalhes do topo validada e anexada.',
+      removeDecorationsReference: 'Remover foto dos detalhes',
     },
     dietarySection: {
       title: 'Restrições alimentares',
