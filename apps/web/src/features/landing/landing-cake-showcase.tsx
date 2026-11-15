@@ -3,6 +3,7 @@
 import { useState } from 'react';
 
 import { CakeCanvas3D } from '@/components/cake-3d/cake-canvas-3d';
+import type { CakeMiniDecoration, CakeRuffleStyle } from '@/components/cake-3d/cake-scene-builder';
 import { messages } from '@/content/messages';
 import type { CakeFormat } from '@/lib/api/orders';
 
@@ -13,6 +14,8 @@ interface PaletteConfig {
   format: CakeFormat;
   swatchHex: string;
   colorHex: string;
+  ruffleStyle: CakeRuffleStyle;
+  decorations: readonly CakeMiniDecoration[];
   dripColorHex: string;
   pearlColorHex: string;
   topperColorHex: string;
@@ -24,6 +27,8 @@ const PALETTES: readonly PaletteConfig[] = [
     format: 'REDONDO',
     swatchHex: '#E8B4B8',
     colorHex: '#E8B4B8',
+    ruffleStyle: 'BOTH',
+    decorations: ['PEARLS', 'FLOWERS', 'ROSETTES'],
     dripColorHex: '#A64B56',
     pearlColorHex: '#FAF7F2',
     topperColorHex: '#9A2B1E',
@@ -33,6 +38,8 @@ const PALETTES: readonly PaletteConfig[] = [
     format: 'REDONDO',
     swatchHex: '#BFD8C4',
     colorHex: '#BFD8C4',
+    ruffleStyle: 'TOP',
+    decorations: ['FLOWERS', 'ROSETTES'],
     dripColorHex: '#FAF7F2',
     pearlColorHex: '#F3EDE3',
     topperColorHex: '#5E7A64',
@@ -42,6 +49,8 @@ const PALETTES: readonly PaletteConfig[] = [
     format: 'QUADRADO',
     swatchHex: '#6B4423',
     colorHex: '#6B4423',
+    ruffleStyle: 'SIDES',
+    decorations: ['PEARLS', 'ROSETTES'],
     dripColorHex: '#C89258',
     pearlColorHex: '#E8DFCF',
     topperColorHex: '#C8A27C',
@@ -104,6 +113,8 @@ export function LandingCakeShowcase() {
           format={palette.format}
           floorsCount={preset.floors}
           colorHex={palette.colorHex}
+          ruffleStyle={palette.ruffleStyle}
+          decorations={palette.decorations}
           dripColorHex={palette.dripColorHex}
           pearlColorHex={palette.pearlColorHex}
           topperColorHex={palette.topperColorHex}

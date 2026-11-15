@@ -77,7 +77,9 @@ export interface BuilderDraft {
   servings: ServingsOption;
   colorHex: string;
   ruffleStyle: CakeRuffleStyle;
+  ruffleReferenceImageUrl?: string;
   decorations: CakeMiniDecoration[];
+  decorationsReferenceImageUrl?: string;
   floors: CakeFloorInput[];
   dietaryFlags: DietaryKey[];
   toppingMessage: string;
@@ -168,11 +170,19 @@ function readDraftFromSession(catalog: CatalogIngredient[]): BuilderDraft | null
         parsed.ruffleStyle && CAKE_RUFFLE_STYLES.includes(parsed.ruffleStyle)
           ? parsed.ruffleStyle
           : 'NONE',
+      ruffleReferenceImageUrl:
+        typeof parsed.ruffleReferenceImageUrl === 'string'
+          ? parsed.ruffleReferenceImageUrl
+          : undefined,
       decorations: Array.isArray(parsed.decorations)
         ? parsed.decorations.filter((d): d is CakeMiniDecoration =>
             CAKE_MINI_DECORATIONS.includes(d),
           )
         : [],
+      decorationsReferenceImageUrl:
+        typeof parsed.decorationsReferenceImageUrl === 'string'
+          ? parsed.decorationsReferenceImageUrl
+          : undefined,
       floors: normalizedFloors,
       dietaryFlags: Array.isArray(parsed.dietaryFlags)
         ? parsed.dietaryFlags.filter((k): k is DietaryKey => DIETARY_KEYS.includes(k))
@@ -277,6 +287,8 @@ export function CakeBuilderView() {
   const servingsId = useId();
   const colorPickerId = useId();
   const ruffleId = useId();
+  const ruffleRefInputId = useId();
+  const decorationsRefInputId = useId();
   const ricePaperInputId = useId();
 
   const [catalog, setCatalog] = useState<CatalogIngredient[] | null>(null);
@@ -287,6 +299,8 @@ export function CakeBuilderView() {
   const [aeratedNotice, setAeratedNotice] = useState<string>();
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState<string>();
+  const [ruffleRefSuccess, setRuffleRefSuccess] = useState<string>();
+  const [decorationsRefSuccess, setDecorationsRefSuccess] = useState<string>();
   const [submitting, setSubmitting] = useState(false);
   const [actionError, setActionError] = useState<string>();
 
@@ -593,6 +607,50 @@ export function CakeBuilderView() {
     }
   }
 
+  async function handleRuffleReferenceChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    setActionError(undefined);
+    setRuffleRefSuccess(undefined);
+
+    try {
+      const uploaded = await uploadRicePaperImage(file);
+      updateDraft((prev) => ({ ...prev, ruffleReferenceImageUrl: uploaded.url }));
+      setRuffleRefSuccess(texts.structureSection.ruffleReferenceUploaded);
+    } catch (error) {
+      setActionError(
+        error instanceof NetworkError ? texts.errors.network : texts.errors.uploadFailed,
+      );
+    } finally {
+      setUploadingImage(false);
+      event.target.value = '';
+    }
+  }
+
+  async function handleDecorationsReferenceChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    setActionError(undefined);
+    setDecorationsRefSuccess(undefined);
+
+    try {
+      const uploaded = await uploadRicePaperImage(file);
+      updateDraft((prev) => ({ ...prev, decorationsReferenceImageUrl: uploaded.url }));
+      setDecorationsRefSuccess(texts.structureSection.decorationsReferenceUploaded);
+    } catch (error) {
+      setActionError(
+        error instanceof NetworkError ? texts.errors.network : texts.errors.uploadFailed,
+      );
+    } finally {
+      setUploadingImage(false);
+      event.target.value = '';
+    }
+  }
+
   function handleResetDraft() {
     if (!catalog) return;
     const fresh = buildInitialDraft(catalog);
@@ -601,6 +659,8 @@ export function CakeBuilderView() {
       setDraft(fresh);
       setAeratedNotice(undefined);
       setUploadSuccess(undefined);
+      setRuffleRefSuccess(undefined);
+      setDecorationsRefSuccess(undefined);
       setActionError(undefined);
     }
   }
@@ -627,7 +687,10 @@ export function CakeBuilderView() {
         floors: draft.floors,
         dietaryFlags: draft.dietaryFlags,
         toppingMessage: draft.toppingMessage.trim() || undefined,
-        riceImageUrl: draft.riceImageUrl,
+        riceImageUrl:
+          draft.riceImageUrl ??
+          draft.decorationsReferenceImageUrl ??
+          draft.ruffleReferenceImageUrl,
         deliveryAddress: draft.deliveryAddress.trim() || undefined,
       });
       clearDraftFromSession();
@@ -837,6 +900,43 @@ export function CakeBuilderView() {
                 </select>
               </div>
 
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor={ruffleRefInputId} className="text-sm font-medium text-ink">
+                  {texts.structureSection.ruffleReferenceLabel}
+                </label>
+                <p className="text-xs text-ink-muted">{texts.structureSection.ruffleReferenceHint}</p>
+                <input
+                  id={ruffleRefInputId}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  disabled={uploadingImage}
+                  onChange={(event) => {
+                    void handleRuffleReferenceChange(event);
+                  }}
+                  className="block w-full rounded-control border border-line-strong bg-surface px-3 py-2 text-sm text-ink file:mr-3 file:rounded-control file:border-0 file:bg-sand-100 file:px-3 file:py-1.5 file:font-bold file:text-ink"
+                />
+                {uploadingImage && (
+                  <p role="status" className="text-sm text-ink-muted">
+                    {texts.personalizationSection.ricePaperUploading}
+                  </p>
+                )}
+                {ruffleRefSuccess && draft.ruffleReferenceImageUrl && (
+                  <div className="mt-1 flex flex-wrap items-center justify-between gap-2 rounded-control border border-success-line bg-success-soft px-3 py-2 text-sm text-success">
+                    <span>{ruffleRefSuccess}</span>
+                    <Button
+                      variant="ghost"
+                      size="md"
+                      onClick={() => {
+                        setRuffleRefSuccess(undefined);
+                        updateDraft((prev) => ({ ...prev, ruffleReferenceImageUrl: undefined }));
+                      }}
+                    >
+                      {texts.structureSection.removeRuffleReference}
+                    </Button>
+                  </div>
+                )}
+              </div>
+
               <fieldset>
                 <legend className="text-sm font-medium text-ink">
                   {texts.structureSection.decorationsLabel}
@@ -868,6 +968,48 @@ export function CakeBuilderView() {
                   })}
                 </div>
               </fieldset>
+
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor={decorationsRefInputId} className="text-sm font-medium text-ink">
+                  {texts.structureSection.decorationsReferenceLabel}
+                </label>
+                <p className="text-xs text-ink-muted">
+                  {texts.structureSection.decorationsReferenceHint}
+                </p>
+                <input
+                  id={decorationsRefInputId}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  disabled={uploadingImage}
+                  onChange={(event) => {
+                    void handleDecorationsReferenceChange(event);
+                  }}
+                  className="block w-full rounded-control border border-line-strong bg-surface px-3 py-2 text-sm text-ink file:mr-3 file:rounded-control file:border-0 file:bg-sand-100 file:px-3 file:py-1.5 file:font-bold file:text-ink"
+                />
+                {uploadingImage && (
+                  <p role="status" className="text-sm text-ink-muted">
+                    {texts.personalizationSection.ricePaperUploading}
+                  </p>
+                )}
+                {decorationsRefSuccess && draft.decorationsReferenceImageUrl && (
+                  <div className="mt-1 flex flex-wrap items-center justify-between gap-2 rounded-control border border-success-line bg-success-soft px-3 py-2 text-sm text-success">
+                    <span>{decorationsRefSuccess}</span>
+                    <Button
+                      variant="ghost"
+                      size="md"
+                      onClick={() => {
+                        setDecorationsRefSuccess(undefined);
+                        updateDraft((prev) => ({
+                          ...prev,
+                          decorationsReferenceImageUrl: undefined,
+                        }));
+                      }}
+                    >
+                      {texts.structureSection.removeDecorationsReference}
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
           </section>
 
