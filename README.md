@@ -129,7 +129,21 @@ cakecraft/
 | `npm run test:cov:api` | Testes unitários e integração HTTP da API (meta `>= 75%`) | **96,54% Stmts** (30 suítes, 187 testes) |
 | `npm run test:e2e:api` | Testes E2E contra **PostgreSQL 16 + Redis 7 reais** (`schema=e2e_test`) | **28/28 testes** (6 suítes) |
 | `npm run test:cov:web` | Testes de componentes, fluxos e contraste WCAG 2.1 (meta `>= 25%`) | **93,19% Stmts** (43 suítes, 328 testes) |
-| `npm run build:api` / `npm run build:web` | Compilação de produção NestJS e Next.js 16 | Build limpo (13 rotas) |
+| `npm run build:api` / `npm run build:web` | Compilação de produção NestJS e Next.js 16 | Build limpo (15 rotas) |
 | `npm run audit:prod` | Auditoria de vulnerabilidades em dependências de produção | **0 vulnerabilidades** |
 
-Para instruções completas de deploy automatizado no **Microsoft Azure**, configuração do webhook **Asaas**, **SonarCloud**, **Prometheus + Grafana** e publicação da **Wiki**, consulte [`docs/DEPLOY-AZURE-ASAAS-SONAR.md`](docs/DEPLOY-AZURE-ASAAS-SONAR.md).
+---
+
+## Como o Projeto Foi Publicado no Microsoft Azure e Configurado no CI/CD (Visão Geral)
+
+### 1. Infraestrutura no Microsoft Azure (Terraform + Docker Compose)
+- **Provisionamento automatizado (IaC):** a infraestrutura foi criada no **Microsoft Azure** (região `brazilsouth`) usando **Terraform** (`infra/terraform/`), que provisiona automaticamente o grupo de recursos, rede virtual (VNet/Subnet), firewall (NSG liberando apenas portas `22`, `80` e `443`), IP público estático com domínio `cakecraft-app.brazilsouth.cloudapp.azure.com` e uma máquina virtual **Ubuntu 24.04 LTS**.
+- **Inicialização e Containers:** no primeiro boot, o script `cloud-init` instala o Docker Engine e o Docker Compose v2 e prepara o diretório `/opt/cakecraft`. A aplicação roda integralmente containerizada via `docker-compose.prod.yml`, orquestrando **Caddy 2.8** (proxy reverso com HTTPS automático Let's Encrypt), **Next.js 16** (frontend), **NestJS 11** (API), **PostgreSQL 16**, **Redis 7**, **Prometheus** e **Grafana**.
+
+### 2. Pipeline CI/CD no GitHub Actions (`.github/workflows/ci-cd.yml`)
+O workflow é acionado automaticamente a cada `push` ou `pull_request` na branch `main` e está dividido em 3 etapas sequenciais:
+1. **`quality-and-tests` (Integração Contínua):** sobe containers reais de PostgreSQL 16 e Redis 7 no runner do GitHub, executa auditoria de segurança (`npm run audit:prod`), linter/typecheck, migrações do Prisma, testes unitários e E2E com cobertura, build de produção e análise estática no **SonarCloud**.
+2. **`build-and-publish-images` (Empacotamento):** quando o código entra na `main` e passa nos testes, o pipeline constrói as imagens Docker multi-stage da API, das migrações e do Frontend e publica no **GitHub Container Registry (`ghcr.io`)** marcadas com o hash do commit (`sha-<commit>`).
+3. **`deploy-azure` (Entrega Contínua):** conecta-se via SSH à VM do Azure (usando os segredos `AZURE_VM_HOST`, `AZURE_VM_USER` e `AZURE_VM_SSH_KEY` configurados no GitHub), envia os manifestos de produção, baixa as novas imagens do `ghcr.io`, aplica as migrações no banco, atualiza os containers com `docker compose -f docker-compose.prod.yml up -d` e valida o `/api/health`.
+
+Para o passo a passo operacional detalhado, consulte [`docs/DEPLOY-AZURE-ASAAS-SONAR.md`](docs/DEPLOY-AZURE-ASAAS-SONAR.md).
