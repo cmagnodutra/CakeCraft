@@ -50,7 +50,7 @@ export class CreateOrderDto {
    */
   @IsOptional()
   @IsString()
-  @Matches(/^\/api\/uploads\/rice-paper\/[0-9a-f-]{36}\.(png|jpg|webp)$/, {
+  @Matches(/^\/api\/uploads\/rice-paper\/[0-9a-f-]{36}\.(png|jpg|webp|gif|avif)$/, {
     message: 'riceImageUrl deve apontar para um upload valido de papel de arroz.',
   })
   riceImageUrl?: string;
