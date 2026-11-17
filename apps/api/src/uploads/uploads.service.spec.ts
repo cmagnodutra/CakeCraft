@@ -61,6 +61,27 @@ describe('UploadsService (RF05 - papel de arroz seguro)', () => {
     });
     expect(webp.url).toMatch(/\.webp$/);
     expect(webp.mimeType).toBe('image/webp');
+
+    const gifHeader = Buffer.from('GIF89a\x01\x00\x01\x00', 'ascii');
+    const gif = await service.saveRicePaperImage({
+      buffer: gifHeader,
+      size: gifHeader.length,
+      originalname: 'animacao.gif',
+    });
+    expect(gif.url).toMatch(/\.gif$/);
+    expect(gif.mimeType).toBe('image/gif');
+
+    const avifHeader = Buffer.from('\x00\x00\x00\x1cftypavif\x00\x00\x00\x00', 'ascii');
+    const avif = await service.saveRicePaperImage({
+      buffer: avifHeader,
+      size: avifHeader.length,
+      originalname: 'foto.avif',
+    });
+    expect(avif.url).toMatch(/\.avif$/);
+    expect(avif.mimeType).toBe('image/avif');
+    const avifFilename = avif.url.split('/').pop()!;
+    const resolvedAvif = await service.readRicePaperImage(avifFilename);
+    expect(resolvedAvif.mimeType).toBe('image/avif');
   });
 
   it('rejeita arquivo ausente, acima de 5 MB ou com conteudo disfarcado (ex.: SVG/script com extensao .png)', async () => {

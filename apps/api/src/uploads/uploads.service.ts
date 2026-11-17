@@ -10,7 +10,7 @@ import { AppEnvironment } from '../config/env.validation';
 export const MAX_RICE_PAPER_BYTES = 5 * 1024 * 1024;
 
 const SAFE_FILENAME_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(png|jpg|webp)$/;
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(png|jpg|webp|gif|avif)$/;
 
 export interface UploadedFilePayload {
   buffer: Buffer;
@@ -18,20 +18,27 @@ export interface UploadedFilePayload {
   originalname: string;
 }
 
+export type SupportedImageMime =
+  | 'image/png'
+  | 'image/jpeg'
+  | 'image/webp'
+  | 'image/gif'
+  | 'image/avif';
+
 export interface SavedRicePaperResult {
   url: string;
-  mimeType: 'image/png' | 'image/jpeg' | 'image/webp';
+  mimeType: SupportedImageMime;
   sizeBytes: number;
 }
 
 export interface ReadRicePaperResult {
   buffer: Buffer;
-  mimeType: 'image/png' | 'image/jpeg' | 'image/webp';
+  mimeType: SupportedImageMime;
 }
 
 interface DetectedFormat {
-  ext: 'png' | 'jpg' | 'webp';
-  mimeType: 'image/png' | 'image/jpeg' | 'image/webp';
+  ext: 'png' | 'jpg' | 'webp' | 'gif' | 'avif';
+  mimeType: SupportedImageMime;
 }
 
 /**
@@ -87,9 +94,15 @@ export class UploadsService {
       throw new BadRequestException('Nome de arquivo invalido.');
     }
 
-    const ext = filename.split('.').pop() as 'png' | 'jpg' | 'webp';
-    const mimeType =
-      ext === 'png' ? 'image/png' : ext === 'jpg' ? 'image/jpeg' : 'image/webp';
+    const ext = filename.split('.').pop() as DetectedFormat['ext'];
+    const mimeByExt: Record<DetectedFormat['ext'], SupportedImageMime> = {
+      png: 'image/png',
+      jpg: 'image/jpeg',
+      webp: 'image/webp',
+      gif: 'image/gif',
+      avif: 'image/avif',
+    };
+    const mimeType = mimeByExt[ext];
     const fullPath = join(this.ricePaperDir, filename);
 
     try {
@@ -129,6 +142,22 @@ function detectImageMagicBytes(buffer: Buffer): DetectedFormat | null {
     buffer.subarray(8, 12).toString('ascii') === 'WEBP'
   ) {
     return { ext: 'webp', mimeType: 'image/webp' };
+  }
+
+  // GIF: "GIF87a" ou "GIF89a"
+  if (buffer.length >= 6) {
+    const gifHeader = buffer.subarray(0, 6).toString('ascii');
+    if (gifHeader === 'GIF87a' || gifHeader === 'GIF89a') {
+      return { ext: 'gif', mimeType: 'image/gif' };
+    }
+  }
+
+  // AVIF (ISO BMFF): bytes 4..8 = "ftyp" e brand "avif", "avis" ou "mif1"
+  if (buffer.length >= 12 && buffer.subarray(4, 8).toString('ascii') === 'ftyp') {
+    const brand = buffer.subarray(8, 12).toString('ascii');
+    if (brand === 'avif' || brand === 'avis' || brand === 'mif1') {
+      return { ext: 'avif', mimeType: 'image/avif' };
+    }
   }
 
   return null;

@@ -7,14 +7,12 @@ import {
   Post,
   Res,
   UploadedFile,
-  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { memoryStorage } from 'multer';
 
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import {
   MAX_RICE_PAPER_BYTES,
   SavedRicePaperResult,
@@ -27,7 +25,6 @@ export class UploadsController {
   constructor(private readonly uploadsService: UploadsService) {}
 
   @Post('rice-paper')
-  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.CREATED)
   @UseInterceptors(
     FileInterceptor('file', {
