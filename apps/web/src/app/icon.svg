@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Fundo arredondado da marca para contraste em abas claras e escuras -->
+  <rect width="64" height="64" rx="14" fill="#1B1814" />
+
+  <!-- Pedestal do bolo -->
+  <rect x="10" y="50" width="44" height="4" rx="2" fill="#E8DFCF" />
+  <rect x="25" y="54" width="14" height="3" rx="1.5" fill="#8C7F69" />
+
+  <!-- Andar inferior -->
+  <rect x="14" y="35" width="36" height="15" rx="3" fill="#FAF7F2" />
+  <path
+    d="M14 38C14 36.3431 15.3431 35 17 35H47C48.6569 35 50 36.3431 50 38V40C47.5 40 47.5 42.5 45 42.5C42.5 42.5 42.5 40 40 40C37.5 40 37.5 42.5 35 42.5C32.5 42.5 32.5 40 30 40C27.5 40 27.5 42.5 25 42.5C22.5 42.5 22.5 40 20 40C17.5 40 17.5 42.5 14 41.5V38Z"
+    fill="#E8B4B8"
+  />
+
+  <!-- Andar superior -->
+  <rect x="20" y="22" width="24" height="13" rx="2.5" fill="#FAF7F2" />
+  <path
+    d="M20 24.5C20 23.1193 21.1193 22 22.5 22H41.5C42.8807 22 44 23.1193 44 24.5V26.5C42 26.5 42 28.5 40 28.5C38 28.5 38 26.5 36 26.5C34 26.5 34 28.5 32 28.5C30 28.5 30 26.5 28 26.5C26 26.5 26 28.5 24 28.5C22 28.5 22 26.5 20 26.5V24.5Z"
+    fill="#E8B4B8"
+  />
+
+  <!-- Vela e chama / cereja no topo -->
+  <rect x="30.5" y="14" width="3" height="8" rx="1.5" fill="#E8DFCF" />
+  <path
+    d="M32 7.5C32 7.5 35.5 10.7 35.5 12.8C35.5 14.7 33.9 16 32 16C30.1 16 28.5 14.7 28.5 12.8C28.5 10.7 32 7.5 32 7.5Z"
+    fill="#E09F3E"
+  />
+</svg>
