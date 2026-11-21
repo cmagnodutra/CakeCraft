@@ -55,7 +55,7 @@ export const messages = {
       presets: {
         rose: {
           label: 'Rosé & Frutas',
-          plaque: 'Parabéns, Marina!',
+          plaque: 'Parabéns, Beatriz!',
           floors: 3,
           composition: 'Massa estruturada · Redução de frutas vermelhas · Chantilly rosé',
           servings: '2,8 kg (~28 fatias)',
@@ -485,7 +485,7 @@ export const messages = {
     personalizationSection: {
       title: 'Personalização e entrega',
       toppingMessageLabel: 'Mensagem de topo (opcional)',
-      toppingMessageHint: 'Até 120 caracteres (ex.: Parabéns, Marina!).',
+      toppingMessageHint: 'Até 120 caracteres (ex.: Parabéns, Beatriz!).',
       ricePaperLabel: 'Arte para papel de arroz (opcional — PNG, JPEG ou WEBP até 5 MB)',
       ricePaperUploading: 'Validando e enviando imagem...',
       ricePaperUploaded: 'Imagem validada e anexada ao pedido.',

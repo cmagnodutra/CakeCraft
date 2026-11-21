@@ -533,15 +533,6 @@ O diagrama Entidade-Relacionamento (`erDiagram`) completo das 9 tabelas relacion
 
 - Jest + Supertest: escolhidos para suportar a estratégia de testes (Apêndice B), cobrindo testes unitários do motor de precificação/XP e testes de integração das rotas REST.
 
-## 5.5 Hospedagem no Microsoft Azure e Pipeline CI/CD (GitHub Actions)
-
-- Provisionamento no Microsoft Azure (IaC): a infraestrutura em nuvem foi provisionada de forma declarativa com Terraform (`infra/terraform/`) na região `brazilsouth`, criando rede virtual isolada, regras de firewall (portas 22, 80 e 443), IP público com DNS (`cakecraft-app.brazilsouth.cloudapp.azure.com`) e uma máquina virtual Linux (Ubuntu 24.04 LTS) configurada via `cloud-init` com Docker Compose. Em produção (`docker-compose.prod.yml`), o proxy reverso Caddy gerencia o certificado HTTPS (Let's Encrypt) e distribui o tráfego para os containers do Frontend (Next.js), API (NestJS), banco de dados (PostgreSQL 16), cache/mensageria (Redis 7) e observabilidade (Prometheus e Grafana).
-
-- CI/CD no GitHub Actions (`.github/workflows/ci-cd.yml`): configurado em três estágios automatizados a cada atualização na branch `main`:
-  1. Integração Contínua (CI): valida auditoria de dependências, lint, typecheck, testes unitários/E2E contra PostgreSQL e Redis reais, build e qualidade de código no SonarCloud.
-  2. Publicação de Containers: gera as imagens Docker multi-stage da API e do Frontend e publica no GitHub Container Registry (`ghcr.io`).
-  3. Deploy Contínuo (CD): acessa a VM do Azure via SSH utilizando Secrets do repositório, baixa as imagens recém-publicadas, executa as migrações do Prisma, reinicia os serviços via Docker Compose e verifica a saúde da aplicação (`/api/health`).
-
 
 ## 6. Segurança e Privacidade
 
